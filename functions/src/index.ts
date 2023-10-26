@@ -7,27 +7,25 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-//import libraries
+// import libraries
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as express from 'express';
-import * as bodyParser from "body-parser";
+import * as cors from "cors";
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
 
 //initialize express server
 const app = express();
+app.use(cors({ origin: true }));
 const main = express();
-
-//add the path to receive request and set json as bodyParser to process the body 
-main.use('/api/v1', app);
-main.use(bodyParser.json());
-main.use(bodyParser.urlencoded({ extended: false }));
 
 //initialize the database and the collection 
 const db = admin.firestore();
-const userCollection = 'users';
+exports.app = functions.https.onRequest(app);
+
+const userCollection = "users"
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
@@ -118,7 +116,7 @@ export interface ManagerFields {
 
 
 // Create new user
-app.post('/users', async (req, res) => {
+app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
@@ -138,7 +136,7 @@ app.post('/users', async (req, res) => {
 });
 
 // Get all users
-app.get('/users', async (req, res) => {
+app.get('/getAllusers', async (req, res) => {
     try {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
