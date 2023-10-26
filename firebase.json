@@ -3,17 +3,14 @@
     "source": "functions"
   },
   "hosting": {
-    "public": "hosting",
+    "source": "test_hosting",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   }
 }

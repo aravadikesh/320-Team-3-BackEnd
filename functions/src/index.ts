@@ -13,7 +13,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as bodyParser from "body-parser";
 
-//initialize firebase inorder to access its services
+//initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
 
 //initialize express server
@@ -220,13 +220,4 @@ app.put('/users/:userId', async (req, res) => {
     .catch((error)=> res.status(500).send(error))
 });
 
-// import {onRequest} from "firebase-functions/v2/https";
-// import * as logger from "firebase-functions/logger";
 
-// // Start writing functions
-// // https://firebase.google.com/docs/functions/typescript
-
-// // export const helloWorld = onRequest((request, response) => {
-// //   logger.info("Hello logs!", {structuredData: true});
-// //   response.send("Hello from Firebase!");
-// // });
