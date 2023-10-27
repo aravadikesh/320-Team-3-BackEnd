@@ -12,6 +12,8 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
+import { Request, Response } from 'express';
+
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -29,6 +31,10 @@ const userCollection = "users"
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
+
+// regex comparison values
+const reEmail = /\S+@\S+\.\S+/;
+const reSPIRE = /^[0-9]{8}$/
 
 /**
  * user
@@ -154,51 +160,59 @@ app.get('/api/getAllusers', async (req, res) => {
 });
 
 // Get a single user by firebase ID
-app.get('/api/users/:userId', (req,res) => {
-    const userId = req.params.userId; 
-    db.collection(userCollection).doc(userId).get()
-    .then(user => {
-        if(!user.exists) throw new Error('User not found');
-        res.status(200).json({id:user.id, data:user.data()})})
-    .catch(error => res.status(500).send(error));     
+app.get('/api/getUser', (req: Request, res: Response) => {
+  const userId: string | undefined = req.query.userId as string | undefined; 
+  if (!userId) {
+    return res.status(400).json({ error: 'userId parameter is required' });
+  } else {
+    return db.collection(userCollection)
+      .doc(userId)
+      .get()
+      .then((user) => {
+        if (!user.exists) throw new Error('User not found');
+        res.status(200).json({ id: user.id, data: user.data() });
+      })
+      .catch((error) => res.status(500).send(error));
+  }
 });
 
-// Get a user by email or SPIRE_ID
-app.get('/api/users/:identifier', (req, res) => {
-    const identifier : number | string = req.params.identifier;
-    
-    // Check if the identifier is a valid number 
-    if (typeof(identifier) == 'number') {
-        // It's a number, so we'll search by SPIRE_ID
-        const spireId = parseInt(identifier);
+app.get('/api/getUserById', async (req: Request, res: Response) => {
+  try {
+    const identifier: string | undefined = req.query.identifier as string | undefined;
 
-        db.collection(userCollection)
-            .where('SPIRE_ID', '==', spireId)
-            .get()
-            .then((querySnapshot) => {
-                if (querySnapshot.empty) {
-                    res.status(404).send('User not found');
-                } else {
-                    const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-                    res.status(200).json({ id: user.id, data: user.data() });
-                }
-            })
-            .catch((error) => res.status(500).send(error));
-    } else {
-        // It's not a number, so we'll search by email
-        db.collection(userCollection)
-            .where('email', '==', identifier)
-            .get()
-            .then((querySnapshot) => {
-                if (querySnapshot.empty) {
-                    res.status(404).send('User not found');
-                } else {
-                    const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-                    res.status(200).json({ id: user.id, data: user.data() });
-                }
-            })
-            .catch((error) => res.status(500).send(error));
+    if (!identifier) {
+      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
     }
+
+    if (reEmail.test(identifier)) {
+      const querySnapshot = await db.collection(userCollection)
+        .where('SPIRE_ID', '==', identifier)
+        .get();
+
+      if (querySnapshot.empty) {
+        return res.status(404).send('User not found bruh');
+      } else {
+        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+        return res.status(200).json({ id: user.id, data: user.data() });
+      }
+    } else if (reSPIRE.test(identifier)) {
+      const querySnapshot = await db.collection(userCollection)
+        .where('email', '==', identifier)
+        .get();
+
+      if (querySnapshot.empty) {
+        return res.status(404).send('User not found breh');
+      } else {
+        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+        return res.status(200).json({ id: user.id, data: user.data() });
+      }
+    }
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+
+  // Default return statement to satisfy TypeScript
+  return res.status(500).send('An unexpected error occurred');
 });
 
 // Delete a user
