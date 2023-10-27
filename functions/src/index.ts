@@ -12,6 +12,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as bodyParser from "body-parser";
+import * as auth from "../../auth";
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -129,7 +130,7 @@ app.post('/users', async (req, res) => {
             waiver: req.body['waiver'],
             ...req.body  // Include any additional properties sent by the client
         }
-
+        auth.handleSignUp(user, user.email, req.body['password']);
         const newDoc = await db.collection(userCollection).add(user);
         res.status(201).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {

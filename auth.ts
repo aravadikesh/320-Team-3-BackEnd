@@ -143,7 +143,7 @@ function handleSignIn(email : string, password: string) {
 /**
  * Handles the sign up button press.
  */
-function handleSignUp(user: User, email: string, password: string, ) {
+export function handleSignUp(user: User, email: string, password: string, ) {
   if(!validateUser(user, email, password))
     return;
   // Create user with email and pass.
