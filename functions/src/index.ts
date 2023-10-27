@@ -29,6 +29,7 @@ const db = admin.firestore();
 exports.app = functions.https.onRequest(app);
 
 const userCollection = "users"
+const gearCollection = "gear"
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
@@ -160,6 +161,25 @@ app.get('/api/getAllusers', async (req, res) => {
     }
 });
 
+// Get all gear
+app.get('/api/getAllGear', async (req, res) => {
+    try {
+        const gearQuerySnapshot = await db.collection(gearCollection).get();
+        const gear: any[] = [];
+        gearQuerySnapshot.forEach(
+            (doc) => {
+                gear.push({
+                    id: doc.id,
+                    data: doc.data()
+                });
+            }
+        );
+        res.status(200).json(gear);
+    } catch (error) {
+        res.status(500).send(error);
+    }
+});
+
 // Get a single user by firebase ID
 app.get('/api/getUser', (req: Request, res: Response) => {
   const userId: string | undefined = req.query.userId as string | undefined; 
@@ -177,6 +197,24 @@ app.get('/api/getUser', (req: Request, res: Response) => {
   }
 });
 
+// Get a single gear by gear ID
+app.get('/api/getGear', (req: Request, res: Response) => {
+    const gearId: string | undefined = req.query.gearId as string | undefined; 
+    if (!gearId) {
+      return res.status(400).json({ error: 'gearId parameter is required' });
+    } else {
+      return db.collection(gearCollection)
+        .doc(gearId)
+        .get()
+        .then((gear) => {
+          if (!gear.exists) throw new Error('Gear item not found');
+          res.status(200).json({ id: gear.id, data: gear.data() });
+        })
+        .catch((error) => res.status(500).send(error));
+    }
+});
+
+// get User by email or SPIRE_ID
 app.get('/api/getUserById', async (req: Request, res: Response) => {
   try {
     const identifier: string | undefined = req.query.identifier as string | undefined;
@@ -216,21 +254,34 @@ app.get('/api/getUserById', async (req: Request, res: Response) => {
   return res.status(500).send('An unexpected error occurred');
 });
 
-// Delete a user
+// Delete a user by ID
 app.delete('/api/users/:userId', (req, res) => {
     db.collection(userCollection).doc(req.params.userId).delete()
         .then(() => res.status(204).send("Document successfully deleted!"))
         .catch(function (error) {
             res.status(500).send(error);
         });
-})
+});
+
+// Delete a gear by ID
+app.delete('/api/gear/:gearId', (req, res) => {
+    db.collection(gearCollection).doc(req.params.gearId).delete()
+        .then(() => res.status(204).send("Document successfully deleted!"))
+        .catch(function (error) {
+            res.status(500).send(error);
+        });
+});
 
 // Update a user
 app.put('/api/users/:userId', async (req, res) => {
     await db.collection(userCollection).doc(req.params.userId).set(req.body,{merge:true})
     .then(()=> res.json({id:req.params.userId}))
-    .catch((error)=> res.status(500).send(error))
+    .catch((error)=> res.status(500).send(error));
 });
 
-
-
+// Update gear item
+app.put('/api/gear/:gearId', async (req, res) => {
+    await db.collection(gearCollection).doc(req.params.gearId).set(req.body,{merge:true})
+    .then(()=> res.json({id:req.params.gearId}))
+    .catch((error)=> res.status(500).send(error));
+});
