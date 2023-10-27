@@ -7,30 +7,34 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-//import libraries
+// import libraries
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as express from 'express';
-import * as bodyParser from "body-parser";
+import * as cors from "cors";
+import { Request, Response } from 'express';
+
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
 
 //initialize express server
 const app = express();
+app.use(cors({ origin: true }));
 const main = express();
-
-//add the path to receive request and set json as bodyParser to process the body 
-main.use('/api/v1', app);
-main.use(bodyParser.json());
-main.use(bodyParser.urlencoded({ extended: false }));
 
 //initialize the database and the collection 
 const db = admin.firestore();
-const userCollection = 'users';
+exports.app = functions.https.onRequest(app);
+
+const userCollection = "users"
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
+
+// regex comparison values
+const reEmail = /\S+@\S+\.\S+/;
+const reSPIRE = /^[0-9]{8}$/
 
 /**
  * user
@@ -116,9 +120,8 @@ export interface ManagerFields {
     [property: string]: any;
 }
 
-
 // Create new user
-app.post('/users', async (req, res) => {
+app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
@@ -138,7 +141,7 @@ app.post('/users', async (req, res) => {
 });
 
 // Get all users
-app.get('/users', async (req, res) => {
+app.get('/api/getAllusers', async (req, res) => {
     try {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
@@ -157,56 +160,63 @@ app.get('/users', async (req, res) => {
 });
 
 // Get a single user by firebase ID
-app.get('/users/:userId', (req, res) => {
-    const userId = req.params.userId;
-    db.collection(userCollection).doc(userId).get()
-        .then(user => {
-            if (!user.exists) throw new Error('User not found');
-            res.status(200).json({ id: user.id, data: user.data() })
-        })
-        .catch(error => res.status(500).send(error));
+app.get('/api/getUser', (req: Request, res: Response) => {
+  const userId: string | undefined = req.query.userId as string | undefined; 
+  if (!userId) {
+    return res.status(400).json({ error: 'userId parameter is required' });
+  } else {
+    return db.collection(userCollection)
+      .doc(userId)
+      .get()
+      .then((user) => {
+        if (!user.exists) throw new Error('User not found');
+        res.status(200).json({ id: user.id, data: user.data() });
+      })
+      .catch((error) => res.status(500).send(error));
+  }
 });
 
-// Get a user by email or SPIRE_ID
-app.get('/users/:identifier', (req, res) => {
-    const identifier: number | string = req.params.identifier;
+app.get('/api/getUserById', async (req: Request, res: Response) => {
+  try {
+    const identifier: string | undefined = req.query.identifier as string | undefined;
 
-    // Check if the identifier is a valid number 
-    if (typeof (identifier) == 'number') {
-        // It's a number, so we'll search by SPIRE_ID
-        const spireId = parseInt(identifier);
-
-        db.collection(userCollection)
-            .where('SPIRE_ID', '==', spireId)
-            .get()
-            .then((querySnapshot) => {
-                if (querySnapshot.empty) {
-                    res.status(404).send('User not found');
-                } else {
-                    const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-                    res.status(200).json({ id: user.id, data: user.data() });
-                }
-            })
-            .catch((error) => res.status(500).send(error));
-    } else {
-        // It's not a number, so we'll search by email
-        db.collection(userCollection)
-            .where('email', '==', identifier)
-            .get()
-            .then((querySnapshot) => {
-                if (querySnapshot.empty) {
-                    res.status(404).send('User not found');
-                } else {
-                    const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-                    res.status(200).json({ id: user.id, data: user.data() });
-                }
-            })
-            .catch((error) => res.status(500).send(error));
+    if (!identifier) {
+      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
     }
+
+    if (reSPIRE.test(identifier)) {
+        const querySnapshot = await db.collection(userCollection)
+            .where('SPIRE_ID', '==', identifier)
+            .get();
+        
+        if (querySnapshot.empty) {
+            return res.status(404).send('User not found');
+        } else {
+            const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+            return res.status(200).json({ id: user.id, data: user.data() });
+        }
+    } else if (reEmail.test(identifier)) {
+      const querySnapshot = await db.collection(userCollection)
+        .where('email', '==', identifier)
+        .get();
+
+      if (querySnapshot.empty) {
+        return res.status(404).send('User not found');
+      } else {
+        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+        return res.status(200).json({ id: user.id, data: user.data() });
+      }
+    }
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+
+  // Default return statement to satisfy TypeScript
+  return res.status(500).send('An unexpected error occurred');
 });
 
 // Delete a user
-app.delete('/users/:userId', (req, res) => {
+app.delete('/api/users/:userId', (req, res) => {
     db.collection(userCollection).doc(req.params.userId).delete()
         .then(() => res.status(204).send("Document successfully deleted!"))
         .catch(function (error) {
@@ -215,10 +225,10 @@ app.delete('/users/:userId', (req, res) => {
 })
 
 // Update a user
-app.put('/users/:userId', async (req, res) => {
-    await db.collection(userCollection).doc(req.params.userId).set(req.body, { merge: true })
-        .then(() => res.json({ id: req.params.userId }))
-        .catch((error) => res.status(500).send(error))
+app.put('/api/users/:userId', async (req, res) => {
+    await db.collection(userCollection).doc(req.params.userId).set(req.body,{merge:true})
+    .then(()=> res.json({id:req.params.userId}))
+    .catch((error)=> res.status(500).send(error))
 });
 
 
