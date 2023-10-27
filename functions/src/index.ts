@@ -114,7 +114,6 @@ export interface ManagerFields {
     [property: string]: any;
 }
 
-
 // Create new user
 app.post('/api/createUser', async (req, res) => {
     try {
@@ -136,7 +135,7 @@ app.post('/api/createUser', async (req, res) => {
 });
 
 // Get all users
-app.get('/getAllusers', async (req, res) => {
+app.get('/api/getAllusers', async (req, res) => {
     try {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
@@ -155,7 +154,7 @@ app.get('/getAllusers', async (req, res) => {
 });
 
 // Get a single user by firebase ID
-app.get('/users/:userId', (req,res) => {
+app.get('/api/users/:userId', (req,res) => {
     const userId = req.params.userId; 
     db.collection(userCollection).doc(userId).get()
     .then(user => {
@@ -165,7 +164,7 @@ app.get('/users/:userId', (req,res) => {
 });
 
 // Get a user by email or SPIRE_ID
-app.get('/users/:identifier', (req, res) => {
+app.get('/api/users/:identifier', (req, res) => {
     const identifier : number | string = req.params.identifier;
     
     // Check if the identifier is a valid number 
@@ -203,7 +202,7 @@ app.get('/users/:identifier', (req, res) => {
 });
 
 // Delete a user
-app.delete('/users/:userId', (req, res) => {
+app.delete('/api/users/:userId', (req, res) => {
     db.collection(userCollection).doc(req.params.userId).delete()
     .then(()=>res.status(204).send("Document successfully deleted!"))
     .catch(function (error) {
@@ -212,7 +211,7 @@ app.delete('/users/:userId', (req, res) => {
 })
 
 // Update a user
-app.put('/users/:userId', async (req, res) => {
+app.put('/api/users/:userId', async (req, res) => {
     await db.collection(userCollection).doc(req.params.userId).set(req.body,{merge:true})
     .then(()=> res.json({id:req.params.userId}))
     .catch((error)=> res.status(500).send(error))
