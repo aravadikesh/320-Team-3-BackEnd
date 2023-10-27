@@ -184,24 +184,24 @@ app.get('/api/getUserById', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Correct Identifier parameter is required' });
     }
 
-    if (reEmail.test(identifier)) {
-      const querySnapshot = await db.collection(userCollection)
-        .where('SPIRE_ID', '==', identifier)
-        .get();
-
-      if (querySnapshot.empty) {
-        return res.status(404).send('User not found bruh');
-      } else {
-        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-        return res.status(200).json({ id: user.id, data: user.data() });
-      }
-    } else if (reSPIRE.test(identifier)) {
+    if (reSPIRE.test(identifier)) {
+        const querySnapshot = await db.collection(userCollection)
+            .where('SPIRE_ID', '==', identifier)
+            .get();
+        
+        if (querySnapshot.empty) {
+            return res.status(404).send('User not found');
+        } else {
+            const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+            return res.status(200).json({ id: user.id, data: user.data() });
+        }
+    } else if (reEmail.test(identifier)) {
       const querySnapshot = await db.collection(userCollection)
         .where('email', '==', identifier)
         .get();
 
       if (querySnapshot.empty) {
-        return res.status(404).send('User not found breh');
+        return res.status(404).send('User not found');
       } else {
         const user = querySnapshot.docs[0]; // Assuming there is only one matching user
         return res.status(200).json({ id: user.id, data: user.data() });
