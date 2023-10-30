@@ -173,7 +173,6 @@ export interface ManagerFields {
     
         if (reSPIRE.test(identifier)) {
             // const id = parseInt(identifier);
-            res.send("check");
             const querySnapshot = await db.collection(userCollection)
                 .where('SPIRE_ID', '==', identifier)
                 .get();

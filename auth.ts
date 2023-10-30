@@ -1,7 +1,6 @@
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
 import { initializeApp } from 'firebase/app';
 
 /**
