@@ -36,7 +36,8 @@ export const webApi = functions.https.onRequest(main);
 
 // regex comparison values
 const reEmail = /\S+@\S+\.\S+/;
-const reSPIRE = /^[0-9]{8}$/
+const reSPIRE = /^[0-9]{8}$/;
+const reUID = /^[A-Za-z]{3}\d{3}$/;
 
 /**
  * user
@@ -122,137 +123,137 @@ export interface ManagerFields {
     [property: string]: any;
 }
 
-// Create new user
-app.post('/api/createUser', async (req, res) => {
-    try {
-        const user: User = {
-            email: req.body['email'],
-            name: req.body['firstName'] + ' ' + req.body['lastName'], // Might have to be changed to only post the fullName
-            permLvl: req.body['permLevel'],
-            phoneNum: req.body['contactNumber'],
-            SPIRE_ID: req.body['id'],
-            waiver: req.body['waiver'],
-            ...req.body  // Include any additional properties sent by the client
+// User API Calls
+
+    // Create new user
+    app.post('/api/createUser', async (req, res) => {
+        try {
+            const user: User = {
+                email: req.body['email'],
+                name: req.body['name'], // Might have to be changed to only post the fullName
+                permLvl: req.body['permLevel'],
+                phoneNum: req.body['contactNumber'],
+                SPIRE_ID: req.body['id'],
+                waiver: req.body['waiver'],
+                ...req.body  // Include any additional properties sent by the client
+            }
+            auth.handleSignUp(user, user.email, "bsdk");
+            const newDoc = await db.collection(userCollection).add(user);
+            res.status(201).send(`Created a new user: ${newDoc.id}`);
+        } catch (error) {
+            res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
         }
-        auth.handleSignUp(user, user.email, req.body['password']);
-        const newDoc = await db.collection(userCollection).add(user);
-        res.status(201).send(`Created a new user: ${newDoc.id}`);
-    } catch (error) {
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
-    }
-});
+    });
 
-// Get all users
-app.get('/api/getAllusers', async (req, res) => {
-    try {
-        const userQuerySnapshot = await db.collection(userCollection).get();
-        const users: any[] = [];
-        userQuerySnapshot.forEach(
-            (doc) => {
-                users.push({
-                    id: doc.id,
-                    data: doc.data()
-                });
-            }
-        );
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).send(error);
-    }
-});
-
-// Get all gear
-app.get('/api/getAllGear', async (req, res) => {
-    try {
-        const gearQuerySnapshot = await db.collection(gearCollection).get();
-        const gear: any[] = [];
-        gearQuerySnapshot.forEach(
-            (doc) => {
-                gear.push({
-                    id: doc.id,
-                    data: doc.data()
-                });
-            }
-        );
-        res.status(200).json(gear);
-    } catch (error) {
-        res.status(500).send(error);
-    }
-});
-
-// Get a single user by firebase ID
-app.get('/api/getUser', (req: Request, res: Response) => {
-  const userId: string | undefined = req.query.userId as string | undefined; 
-  if (!userId) {
-    return res.status(400).json({ error: 'userId parameter is required' });
-  } else {
-    return db.collection(userCollection)
-      .doc(userId)
-      .get()
-      .then((user) => {
-        if (!user.exists) throw new Error('User not found');
-        res.status(200).json({ id: user.id, data: user.data() });
-      })
-      .catch((error) => res.status(500).send(error));
-  }
-});
-
-// Get a single gear by gear ID
-app.get('/api/getGear', (req: Request, res: Response) => {
-    const gearId: string | undefined = req.query.gearId as string | undefined; 
-    if (!gearId) {
-      return res.status(400).json({ error: 'gearId parameter is required' });
-    } else {
-      return db.collection(gearCollection)
-        .doc(gearId)
-        .get()
-        .then((gear) => {
-          if (!gear.exists) throw new Error('Gear item not found');
-          res.status(200).json({ id: gear.id, data: gear.data() });
-        })
-        .catch((error) => res.status(500).send(error));
-    }
-});
-
-// get User by email or SPIRE_ID
-app.get('/api/getUserById', async (req: Request, res: Response) => {
-  try {
-    const identifier: string | undefined = req.query.identifier as string | undefined;
-
-    if (!identifier) {
-      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
-    }
-
-    if (reSPIRE.test(identifier)) {
-        const querySnapshot = await db.collection(userCollection)
-            .where('SPIRE_ID', '==', identifier)
-            .get();
-        
-        if (querySnapshot.empty) {
-            return res.status(404).send('User not found');
+    // Get a single user by firebase ID
+    app.get('/api/getUser', (req: Request, res: Response) => {
+        const userId: string | undefined = req.query.userId as string | undefined; 
+        if (!userId) {
+        return res.status(400).json({ error: 'userId parameter is required' });
         } else {
+        return db.collection(userCollection)
+            .doc(userId)
+            .get()
+            .then((user) => {
+            if (!user.exists) throw new Error('User not found');
+            res.status(200).json({ id: user.id, data: user.data() });
+            })
+            .catch((error) => res.status(500).send(error));
+        }
+    });
+
+    // get User by email or SPIRE_ID
+    app.get('/api/getUserById', async (req: Request, res: Response) => {
+        try {
+        const identifier: string | undefined = req.query.identifier as string | undefined;
+    
+        if (!identifier) {
+            return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+        }
+    
+        if (reSPIRE.test(identifier)) {
+            // const id = parseInt(identifier);
+            res.send("check");
+            const querySnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', identifier)
+                .get();
+            
+            if (querySnapshot.empty) {
+                return res.status(404).send('User not found ID');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+                return res.status(200).json({ id: user.id, data: user.data() });
+            }
+        } else if (reEmail.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+            .where('email', '==', identifier)
+            .get();
+    
+            if (querySnapshot.empty) {
+            return res.status(404).send('User not found Email');
+            } else {
             const user = querySnapshot.docs[0]; // Assuming there is only one matching user
             return res.status(200).json({ id: user.id, data: user.data() });
+            }
         }
-    } else if (reEmail.test(identifier)) {
-      const querySnapshot = await db.collection(userCollection)
-        .where('email', '==', identifier)
-        .get();
+        } catch (error) {
+        return res.status(500).send(error);
+        }
+    
+        // Default return statement to satisfy TypeScript
+        return res.status(500).send('An unexpected error occurred');
+    });
 
-      if (querySnapshot.empty) {
-        return res.status(404).send('User not found');
-      } else {
-        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-        return res.status(200).json({ id: user.id, data: user.data() });
-      }
-    }
-  } catch (error) {
-    return res.status(500).send(error);
-  }
+// Gear API Calls
 
-  // Default return statement to satisfy TypeScript
-  return res.status(500).send('An unexpected error occurred');
-});
+    // get Gear by UID
+    app.get('/api/getGearById', async (req: Request, res: Response) => {
+        try {
+        const identifier: string | undefined = req.query.identifier as string | undefined;
+
+        if (!identifier) {
+            return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+        }
+
+        if (reUID.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+                .where('gearId', '==', identifier)
+                .get();
+            
+            if (querySnapshot.empty) {
+                return res.status(404).send('Gear not found');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching piece of gear
+                return res.status(200).json({ id: user.id, data: user.data() });
+            }
+        } 
+        } catch (error) {
+        return res.status(500).send(error);
+        }
+
+        // Default return statement to satisfy TypeScript
+        return res.status(500).send('An unexpected error occurred');
+    });
+
+    // Get all Gear
+    app.get('/api/getAllGear', async (req, res) => {
+        try {
+            const gearQuerySnapshot = await db.collection(gearCollection).get();
+            const gear: any[] = [];
+            gearQuerySnapshot.forEach(
+                (doc) => {
+                    gear.push({
+                        id: doc.id,
+                        data: doc.data()
+                    });
+                }
+            );
+            res.status(200).json(gear);
+        } catch (error) {
+            res.status(500).send(error);
+        }
+    });
+
 
 // Delete a user by ID
 app.delete('/api/users/:userId', (req, res) => {
