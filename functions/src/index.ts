@@ -28,6 +28,7 @@ const db = admin.firestore();
 exports.app = functions.https.onRequest(app);
 
 const userCollection = "users"
+const gearCollection = "gear"
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
@@ -35,7 +36,7 @@ export const webApi = functions.https.onRequest(main);
 // regex comparison values
 const reEmail = /\S+@\S+\.\S+/;
 const reSPIRE = /^[0-9]{8}$/
-
+const gearUID = /[A-Z]{3}\d{3}/
 /**
  * user
  */
@@ -209,6 +210,35 @@ app.get('/api/getUserById', async (req: Request, res: Response) => {
     }
   } catch (error) {
     return res.status(500).send(error);
+  }
+
+  // Default return statement to satisfy TypeScript
+  return res.status(500).send('An unexpected error occurred');
+});
+
+// get Gear by UID
+app.get('/api/getGearById', async (req: Request, res: Response) => {
+  try {
+  const identifier: string | undefined = req.query.identifier as string | undefined;
+
+  if (!identifier) {
+      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+  }
+
+  if (gearUID.test(identifier)) {
+      const querySnapshot = await db.collection(gearCollection)
+          .where('gearId', '==', identifier)
+          .get();
+      
+      if (querySnapshot.empty) {
+          return res.status(404).send('Gear not found with identifier: ' + identifier);
+      } else {
+          const gear = querySnapshot.docs[0]; // Assuming there is only one matching piece of gear
+          return res.status(200).json({ id: gear.id, data: gear.data() });
+      }
+  } 
+  } catch (error) {
+  return res.status(500).send(error);
   }
 
   // Default return statement to satisfy TypeScript
