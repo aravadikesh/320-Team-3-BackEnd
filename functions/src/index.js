@@ -34,7 +34,7 @@ app.post('/createUser', async (req, res) => {
         const user = Object.assign({ email: req.body['email'], name: req.body['firstName'] + ' ' + req.body['lastName'], permLvl: req.body['permLevel'], phoneNum: req.body['contactNumber'], SPIRE_ID: req.body['id'], waiver: req.body['waiver'] }, req.body // Include any additional properties sent by the client
         );
         const newDoc = await db.collection(userCollection).add(user);
-        res.status(201).send(`Created a new user: ${newDoc.id}`);
+        res.status(201).send(`Created a new UMOC user: ${newDoc.id}`);
     }
     catch (error) {
         res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
@@ -120,4 +120,4 @@ app.put('/users/:userId', async (req, res) => {
         .then(() => res.json({ id: req.params.userId }))
         .catch((error) => res.status(500).send(error));
 });
-//# sourceMappingURL=index.js.map
+sourceMappingURL=index.js.map

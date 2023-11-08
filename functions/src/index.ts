@@ -125,7 +125,7 @@ app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
-            name: req.body['firstName'] + ' ' + req.body['lastName'], // Might have to be changed to only post the fullName
+            name: req.body['name'], // Might have to be changed to only post the fullName
             permLvl: req.body['permLevel'],
             phoneNum: req.body['contactNumber'],
             SPIRE_ID: req.body['id'],
