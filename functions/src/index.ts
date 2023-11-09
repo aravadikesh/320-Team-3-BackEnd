@@ -29,6 +29,7 @@ exports.app = functions.https.onRequest(app);
 
 const userCollection = "users"
 const gearCollection = "gear"
+const logCollection = 'checkOuts'
 
 //define google cloud function name
 export const webApi = functions.https.onRequest(main);
@@ -48,7 +49,7 @@ export interface User {
      */
     permLvl: number;
     phoneNum: number;
-    SPIRE_ID?: number;
+    SPIRE_ID?: string;
     /**
      * false for expired, true for signed and valid
      */
@@ -119,6 +120,16 @@ export interface ManagerFields {
     managerNotes: string;
     price: number;
     [property: string]: any;
+}
+
+/**
+ * transaction
+ */
+export interface Check {
+    date: string;
+    gearID: string;
+    userSPIRE_ID: string;
+    leadSPIRE_ID: string;
 }
 
 // Create new user
@@ -261,4 +272,23 @@ app.put('/api/users/:userId', async (req, res) => {
     .catch((error)=> res.status(500).send(error))
 });
 
+app.post('/api/checkOutGear', async (req, res) => {
+    try {
+        const check: Check = {
+            date: req.body['date'],
+            gearID: req.body['name'], 
+            userSPIRE_ID: req.body['id'],
+            leadSPIRE_ID: req.body['waiver']
+            //JWT Token to auth that leader/manager is sending request
+        }
 
+        // Logic : send put request to change status of gear, 
+
+        const newDoc = await db.collection(logCollection).add(check);
+        res.status(201).send(`Gear Checked Out: ${newDoc.id}`);
+    } catch (error) {
+        res.status(400).send(`You messed up.`);
+    }
+});
+
+app.put
