@@ -291,4 +291,7 @@ app.post('/api/checkOutGear', async (req, res) => {
     }
 });
 
-app.put
+app.get('/api/getAllGear', async (req: Request, res: Response) => {
+    const snapshot = await db.collection(gearCollection).get()
+    return res.status(201).json(snapshot.docs.map(doc => doc.data()));
+});
