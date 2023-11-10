@@ -14,7 +14,6 @@ import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
 
-
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
 
@@ -132,6 +131,35 @@ export interface Check {
     leadSPIRE_ID: string;
 }
 
+/*
+    Logic Required:
+        Sign Up :
+            Create User 
+            Authenticate Password
+            Sign In User
+        Sign In :
+            Authenticate Details
+            Sign In User
+        Get All Gear :
+            Simply Return List
+        Check Out :
+            Validate Input IDs 
+            Validate Gear ID
+            Validate JWT i.e., Auth level
+            Update Gear Status
+            Update Check Log
+            Update Customer Possession Log
+        Check In :
+            Validate IDs
+            Update Gear Status
+            Update Check Log
+            Update Custoemr Possession Log
+        Upload CSV :
+            TODO : Inbar
+        Get User By ID : Complete
+            
+*/
+
 // Create new user
 app.post('/api/createUser', async (req, res) => {
     try {
@@ -144,7 +172,6 @@ app.post('/api/createUser', async (req, res) => {
             waiver: req.body['waiver'],
             ...req.body  // Include any additional properties sent by the client
         }
-
         const newDoc = await db.collection(userCollection).add(user);
         res.status(201).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
