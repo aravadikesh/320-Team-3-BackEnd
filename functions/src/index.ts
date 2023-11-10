@@ -14,6 +14,7 @@ import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
 
+
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
 
@@ -296,25 +297,140 @@ app.put('/api/users/:userId', async (req, res) => {
     .catch((error)=> res.status(500).send(error))
 });
 
-app.post('/api/checkOutGear', async (req, res) => {
+/*
+    Authentication of Leader is remaining
+    TBD if we need to add gear to user accounts of not
+
+    NOTE: checkOut here is a flag variable representing if a checkIn or a checkOut is occurring
+*/
+app.post('/api/checkGear/:checkOut', async (req, res) => {
     try {
         const check: Check = {
             date: req.body['date'],
-            gearID: req.body['name'], 
-            userSPIRE_ID: req.body['id'],
-            leadSPIRE_ID: req.body['waiver']
-            //JWT Token to auth that leader/manager is sending request
+            gearID: req.body['gearID'],
+            userSPIRE_ID: req.body['userID'],
+            leadSPIRE_ID: req.body['leaderID'],
+            // JWT Token to auth that leader/manager is sending a request
+        };
+
+        const flag = req.params.checkOut;
+        const gearID = check.gearID;
+        const userID = check.userSPIRE_ID;
+        const leadId = check.leadSPIRE_ID;
+
+        if (reSPIRE.test(userID) && reSPIRE.test(leadId) && gearUID.test(gearID)) {
+            const userSnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', userID)
+                .get();
+            const leaderSnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', leadId)
+                .get();
+            const gearSnapshot = await db.collection(gearCollection)
+                .where('gearId', '==', check.gearID)
+                .get();
+
+            if (userSnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else if (leaderSnapshot.empty) {
+                return res.status(404).send('Leader not found');
+            } else if (gearSnapshot.empty) {
+                return res.status(404).send('Gear not found');
+            } else {
+                // Assuming there is only one matching user, leader, and gear
+                // const user = userSnapshot.docs[0]; 
+                // const leader = leaderSnapshot.docs[0];
+                const gear = gearSnapshot.docs[0];
+
+                // Update the status of the checked-out gear 
+                await updateGearStatus(gear.id, flag);
+            }
+        } else {
+            return res.status(400).send('Incorrect specifications received');
         }
-
-        // Logic : send put request to change status of gear, 
-
         const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${newDoc.id}`);
+        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
     } catch (error) {
-        res.status(400).send(`You messed up.`);
+        console.error(error);
+        res.status(500).send('An unexpected error occurred');
     }
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
 });
 
+/*
+app.post('/api/checkInGear', async (req, res) => {
+    try {
+        const check: Check = {
+            date: req.body['date'],
+            gearID: req.body['gearID'],
+            userSPIRE_ID: req.body['userID'],
+            leadSPIRE_ID: req.body['leaderID'],
+            // JWT Token to auth that leader/manager is sending a request
+        };
+
+        const gearID = check.gearID;
+        const userID = check.userSPIRE_ID;
+        const leadId = check.leadSPIRE_ID;
+
+        if (reSPIRE.test(userID) && reSPIRE.test(leadId) && gearUID.test(gearID)) {
+            const userSnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', userID)
+                .get();
+            const leaderSnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', leadId)
+                .get();
+            const gearSnapshot = await db.collection(gearCollection)
+                .where('gearId', '==', check.gearID)
+                .get();
+
+            if (userSnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else if (leaderSnapshot.empty) {
+                return res.status(404).send('Leader not found');
+            } else if (gearSnapshot.empty) {
+                return res.status(404).send('Gear not found');
+            } else {
+                // Assuming there is only one matching user, leader, and gear
+                // const user = userSnapshot.docs[0]; 
+                // const leader = leaderSnapshot.docs[0];
+                const gear = gearSnapshot.docs[0];
+
+                // Update the status of the checked-out gear 
+                await updateGearStatus(gear.id);
+            }
+        } else {
+            return res.status(400).send('Incorrect specifications received');
+        }
+        const newDoc = await db.collection(logCollection).add(check);
+        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('An unexpected error occurred');
+    }
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
+});
+*/
+
+// Helper  function for checkGear : modulates the checkedOut flag for gear
+async function updateGearStatus(gearId: string, flag : string): Promise<void> {
+    try {
+        if(flag == "checkOut") {
+            await db.collection(gearCollection).doc(gearId).update({
+                checkedOut: true, 
+            });
+        } else {
+            await db.collection(gearCollection).doc(gearId).update({
+                checkedOut: false, 
+            });
+        }
+    } catch (error) {
+        console.error(`Error updating gear status: ${error}`);
+        throw new Error('Failed to update gear status');
+    }
+}
+
+// Returns all gear objects
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
     const snapshot = await db.collection(gearCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
