@@ -20,7 +20,6 @@ admin.initializeApp(functions.config().firebase);
 //initialize express server
 const app = express();
 app.use(cors({ origin: true }));
-const main = express();
 
 //initialize the database and the collection 
 const db = admin.firestore();
@@ -29,9 +28,6 @@ exports.app = functions.https.onRequest(app);
 const userCollection = "users"
 const gearCollection = "gear"
 const logCollection = 'checkOuts'
-
-//define google cloud function name
-export const webApi = functions.https.onRequest(main);
 
 // regex comparison values
 const reEmail = /\S+@\S+\.\S+/;
@@ -215,6 +211,7 @@ app.get('/api/getUser', (req: Request, res: Response) => {
   }
 });
 
+// Get user by Email/SPIRE ID
 app.get('/api/getUserById', async (req: Request, res: Response) => {
   try {
     const identifier: string | undefined = req.query.identifier as string | undefined;
