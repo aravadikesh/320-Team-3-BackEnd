@@ -13,6 +13,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
+import { handleSignUp } from '../../auth';
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -48,7 +49,7 @@ export interface User {
      */
     permLvl: number;
     phoneNum: number;
-    SPIRE_ID?: string;
+    SPIRE_ID?: number;
     /**
      * false for expired, true for signed and valid
      */
@@ -172,9 +173,11 @@ app.post('/api/createUser', async (req, res) => {
             waiver: req.body['waiver'],
             ...req.body  // Include any additional properties sent by the client
         }
+        handleSignUp(user, user.email, "testPassword");
         const newDoc = await db.collection(userCollection).add(user);
-        res.status(201).send(`Created a new user: ${newDoc.id}`);
+        res.status(200).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
+        console.log(error);
         res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
     }
 });

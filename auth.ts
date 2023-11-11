@@ -55,44 +55,52 @@ const auth = getAuth(firebase);
 
 function validateUser(user : User, email: string, password: string): boolean {
 
-  const reEmail = /\S+@\S+\.\S+/;
+  const reEmail = /\S+@\S+\.[a-zA-Z]+/;
   const rePass = /.{8,}/;
   const reName = /^[a-z ,.'-]+$/i;
   const rePerm = /^[0-2]$/;
-  const rePhone = /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/;
+  const rePhone = /^(\d{1,2})?\d{10}$/;
   const reSPIRE = /^[0-9]{8}$/
   
   if (!reEmail.test(email)) {
-    alert('Email is fucked')
+    console.log("bad email");
+    alert('Email is fucked');
+    return false;
   }
 
   if (!rePass.test(password)) {
+    console.log('bad pass');
     alert('Password is fucked');
     return false;
   }
 
   if (!reName.test(user.name)) {
+    console.log('bad username');
     alert('Why does your name have a number in it');
     return false;
   } 
 
   if (!rePerm.test(user.permLvl.toString())) {
+    console.log('bad perm');
     alert('Why is your permLvl so high/low/illegal');
     return false;
   }
 
   if (!rePhone.test(user.phoneNum.toString())) {
+    console.log('bad phone');
     alert('Why is your phone number messed up');
     return false;
   }
 
   if (user.waiver == null) {
+    console.log('bad waiver');
     alert('waiver info unavailable');
     return false;
   }
 
   if (user.SPIRE_ID != null) {
-    if(reSPIRE.test(user.SPIRE_ID.toString())) {
+    if(!reSPIRE.test(user.SPIRE_ID.toString())) {
+      console.log('bad SPIRE');
       alert('SPIRE ID is fucked');
       return false;
     }
@@ -106,9 +114,9 @@ function validateEmail(email: string) : boolean {
   return re.test(email);
 }
 
-function validatePassword(email: string) : boolean {
+function validatePassword(password: string) : boolean {
   var re = /\S+@\S+\.\S+/;
-  return re.test(email);
+  return re.test(password);
 }
 
 function handleSignIn(email : string, password: string) {
@@ -143,10 +151,11 @@ function handleSignIn(email : string, password: string) {
 /**
  * Handles the sign up button press.
  */
-function handleSignUp(user: User, email: string, password: string, ) {
+export function handleSignUp(user: User, email: string, password: string) {
   if(!validateUser(user, email, password))
     return;
   // Create user with email and pass.
+  console.log("USER IS VALID");
   createUserWithEmailAndPassword(auth, email, password).catch(function(error) {
     // Handle Errors here.
     var errorCode = error.code;
