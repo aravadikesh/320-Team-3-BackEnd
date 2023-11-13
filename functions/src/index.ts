@@ -1,12 +1,3 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 // import libraries
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
@@ -50,6 +41,7 @@ export interface User {
      * false for expired, true for signed and valid
      */
     waiver: boolean;
+    possession: string[];
     [property: string]: any;
 }
 
@@ -167,31 +159,13 @@ app.post('/api/createUser', async (req, res) => {
             phoneNum: req.body['contactNumber'],
             SPIRE_ID: req.body['id'],
             waiver: req.body['waiver'],
+            possession: req.body['possession'],
             ...req.body  // Include any additional properties sent by the client
         }
         const newDoc = await db.collection(userCollection).add(user);
         res.status(201).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
-    }
-});
-
-// Get all users
-app.get('/api/getAllusers', async (req, res) => {
-    try {
-        const userQuerySnapshot = await db.collection(userCollection).get();
-        const users: any[] = [];
-        userQuerySnapshot.forEach(
-            (doc)=>{
-                users.push({
-                    id: doc.id,
-                    data:doc.data()
-                });
-            }
-        );
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).send(error);
+        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, waiver, and possession fields, along with any additional properties.`);
     }
 });
 
@@ -326,7 +300,7 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
                 .where('SPIRE_ID', '==', leadId)
                 .get();
             const gearSnapshot = await db.collection(gearCollection)
-                .where('gearId', '==', check.gearID)
+                .where('gearId', '==', gearID)
                 .get();
 
             if (userSnapshot.empty) {
@@ -337,12 +311,13 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
                 return res.status(404).send('Gear not found');
             } else {
                 // Assuming there is only one matching user, leader, and gear
-                // const user = userSnapshot.docs[0]; 
+                const user = userSnapshot.docs[0]; 
                 // const leader = leaderSnapshot.docs[0];
                 const gear = gearSnapshot.docs[0];
 
                 // Update the status of the checked-out gear 
                 await updateGearStatus(gear.id, flag);
+                await updateUserPossession(user.id, gearID, flag);
             }
         } else {
             return res.status(400).send('Incorrect specifications received');
@@ -413,19 +388,46 @@ app.post('/api/checkInGear', async (req, res) => {
 */
 
 // Helper  function for checkGear : modulates the checkedOut flag for gear
-async function updateGearStatus(gearId: string, flag : string): Promise<void> {
+// Note gearId here refers to the firebase ID not the UID we assign for gear
+async function updateGearStatus(gearId: string, flag: string): Promise<void> {
     try {
-        if(flag == "checkOut") {
-            await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: true, 
-            });
-        } else {
-            await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: false, 
-            });
-        }
+        const gearRef = db.collection(gearCollection).doc(gearId);
+        const updateData = { checkedOut: flag === "checkOut" };
+
+        await gearRef.update(updateData);
     } catch (error) {
         console.error(`Error updating gear status: ${error}`);
+        throw new Error('Failed to update gear status');
+    }
+}
+
+// Helper function for checkGear : updates User possession of gear
+// Note gearId here refers to the UID we assign for gear
+async function updateUserPossession(gearId: string, userId: string, flag: string): Promise<void> {
+    try {
+        const userRef = db.collection(userCollection).doc(userId);
+        const user = await userRef.get();
+
+        if (flag === "checkOut") {
+            if (user.exists) {
+                const updatedPossession = [...user.data()?.possession || [], gearId];
+                await userRef.update({ possession: updatedPossession });
+            }
+        } else if (flag === "checkIn") {
+            if (user.exists) {
+                const possessionArray = user.data()?.possession || [];
+                if (possessionArray.includes(gearId)) {
+                    const updatedPossession = possessionArray.filter((id: string) => id !== gearId);
+                    await userRef.update({ possession: updatedPossession });
+                } else {
+                    throw new Error(`User does not have gear with ID ${gearId} in possession.`);
+                }
+            }
+        } else {
+            throw new Error(`Invalid flag: ${flag}`);
+        }
+    } catch (error) {
+        console.error(`Error updating user possession status: ${error}`);
         throw new Error('Failed to update gear status');
     }
 }
@@ -433,5 +435,11 @@ async function updateGearStatus(gearId: string, flag : string): Promise<void> {
 // Returns all gear objects
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
     const snapshot = await db.collection(gearCollection).get()
+    return res.status(201).json(snapshot.docs.map(doc => doc.data()));
+});
+
+// Returns all users
+app.get('/api/getAllUsers', async (req: Request, res: Response) => {
+    const snapshot = await db.collection(userCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
