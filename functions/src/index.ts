@@ -171,13 +171,13 @@ app.post('/api/createUser', async (req, res) => {
             phoneNum: req.body['contactNumber'],
             SPIRE_ID: req.body['id'],
             waiver: req.body['waiver'],
-            ...req.body  // Include any additional properties sent by the client
         }
-        handleSignUp(user, user.email, "testPassword");
+        await handleSignUp(user, user.email, "testPassword");
+        console.log("SIGN UP HANDLED");
         const newDoc = await db.collection(userCollection).add(user);
         res.status(200).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
-        console.log(error);
+        console.log("CREATE USER ERROR: " + error);
         res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
     }
 });

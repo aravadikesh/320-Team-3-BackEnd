@@ -150,24 +150,13 @@ function handleSignIn(email : string, password: string) {
 /**
  * Handles the sign up button press.
  */
-export function handleSignUp(user: User, email: string, password: string, ) {
-  if(!validateUser(user, email, password))
-    return;
-  // Create user with email and pass.
-  createUserWithEmailAndPassword(auth, email, password).catch(function(error) {
-    // Handle Errors here.
-    var errorCode = error.code;
-    var errorMessage = error.message;
-    if (errorCode == 'auth/weak-password') {
-      alert('The password is too weak.');
-    }
-    else if (errorCode == 'auth/email-already-in-use') {
-      alert('Email is already in use.');
-    }
-    else {
-      alert(errorMessage);
-    }
-    console.log(error);
-  });
-  // need to update user collection here
+export async function handleSignUp(user: User, email: string, password: string) {
+  try {
+    if (!validateUser(user, email, password))
+      return;
+    await createUserWithEmailAndPassword(auth, email, password);
+  }
+  catch(error) {
+    throw error;
+  }
 }
