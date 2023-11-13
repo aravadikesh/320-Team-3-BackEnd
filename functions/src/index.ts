@@ -316,76 +316,19 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
                 const gear = gearSnapshot.docs[0];
 
                 // Update the status of the checked-out gear 
+                await updateUserPossession(gearID, user.id, flag)
                 await updateGearStatus(gear.id, flag);
-                await updateUserPossession(user.id, gearID, flag);
             }
         } else {
             return res.status(400).send('Incorrect specifications received');
         }
         const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
+        return res.status(201).send(`Gear Checked Out bruh: ${gearID} \n Transaction ID : ${newDoc.id}`);
     } catch (error) {
         console.error(error);
-        res.status(500).send('An unexpected error occurred');
-    }
-    // Default return statement to satisfy TypeScript
-    return res.status(500).send('An unexpected error occurred');
+        return res.status(500).send(`An unexpected error occurred: ${error}`);
+    }    
 });
-
-/*
-app.post('/api/checkInGear', async (req, res) => {
-    try {
-        const check: Check = {
-            date: req.body['date'],
-            gearID: req.body['gearID'],
-            userSPIRE_ID: req.body['userID'],
-            leadSPIRE_ID: req.body['leaderID'],
-            // JWT Token to auth that leader/manager is sending a request
-        };
-
-        const gearID = check.gearID;
-        const userID = check.userSPIRE_ID;
-        const leadId = check.leadSPIRE_ID;
-
-        if (reSPIRE.test(userID) && reSPIRE.test(leadId) && gearUID.test(gearID)) {
-            const userSnapshot = await db.collection(userCollection)
-                .where('SPIRE_ID', '==', userID)
-                .get();
-            const leaderSnapshot = await db.collection(userCollection)
-                .where('SPIRE_ID', '==', leadId)
-                .get();
-            const gearSnapshot = await db.collection(gearCollection)
-                .where('gearId', '==', check.gearID)
-                .get();
-
-            if (userSnapshot.empty) {
-                return res.status(404).send('User not found');
-            } else if (leaderSnapshot.empty) {
-                return res.status(404).send('Leader not found');
-            } else if (gearSnapshot.empty) {
-                return res.status(404).send('Gear not found');
-            } else {
-                // Assuming there is only one matching user, leader, and gear
-                // const user = userSnapshot.docs[0]; 
-                // const leader = leaderSnapshot.docs[0];
-                const gear = gearSnapshot.docs[0];
-
-                // Update the status of the checked-out gear 
-                await updateGearStatus(gear.id);
-            }
-        } else {
-            return res.status(400).send('Incorrect specifications received');
-        }
-        const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('An unexpected error occurred');
-    }
-    // Default return statement to satisfy TypeScript
-    return res.status(500).send('An unexpected error occurred');
-});
-*/
 
 // Helper  function for checkGear : modulates the checkedOut flag for gear
 // Note gearId here refers to the firebase ID not the UID we assign for gear
@@ -393,7 +336,6 @@ async function updateGearStatus(gearId: string, flag: string): Promise<void> {
     try {
         const gearRef = db.collection(gearCollection).doc(gearId);
         const updateData = { checkedOut: flag === "checkOut" };
-
         await gearRef.update(updateData);
     } catch (error) {
         console.error(`Error updating gear status: ${error}`);
@@ -412,6 +354,8 @@ async function updateUserPossession(gearId: string, userId: string, flag: string
             if (user.exists) {
                 const updatedPossession = [...user.data()?.possession || [], gearId];
                 await userRef.update({ possession: updatedPossession });
+            } else {
+                throw new Error('Failed to update gear status');
             }
         } else if (flag === "checkIn") {
             if (user.exists) {
