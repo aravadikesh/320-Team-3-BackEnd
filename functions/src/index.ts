@@ -14,6 +14,13 @@ import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
 
+//imports for csv upload
+import * as multer from 'multer';
+import * as csvParser from 'csv-parser';
+import { Readable } from 'stream';
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -170,7 +177,7 @@ app.post('/api/createUser', async (req, res) => {
             ...req.body  // Include any additional properties sent by the client
         }
         const newDoc = await db.collection(userCollection).add(user);
-        res.status(201).send(`Created a new user: ${newDoc.id}`);
+        res.status(200).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
         res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
     }
@@ -182,10 +189,10 @@ app.get('/api/getAllusers', async (req, res) => {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
         userQuerySnapshot.forEach(
-            (doc)=>{
+            (doc) => {
                 users.push({
                     id: doc.id,
-                    data:doc.data()
+                    data: doc.data()
                 });
             }
         );
@@ -197,104 +204,104 @@ app.get('/api/getAllusers', async (req, res) => {
 
 // Get a single user by firebase ID
 app.get('/api/getUser', (req: Request, res: Response) => {
-  const userId: string | undefined = req.query.userId as string | undefined; 
-  if (!userId) {
-    return res.status(400).json({ error: 'userId parameter is required' });
-  } else {
-    return db.collection(userCollection)
-      .doc(userId)
-      .get()
-      .then((user) => {
-        if (!user.exists) throw new Error('User not found');
-        res.status(200).json({ id: user.id, data: user.data() });
-      })
-      .catch((error) => res.status(500).send(error));
-  }
+    const userId: string | undefined = req.query.userId as string | undefined;
+    if (!userId) {
+        return res.status(400).json({ error: 'userId parameter is required' });
+    } else {
+        return db.collection(userCollection)
+            .doc(userId)
+            .get()
+            .then((user) => {
+                if (!user.exists) throw new Error('User not found');
+                res.status(200).json({ id: user.id, data: user.data() });
+            })
+            .catch((error) => res.status(500).send(error));
+    }
 });
 
 // Get user by Email/SPIRE ID
 app.get('/api/getUserById', async (req: Request, res: Response) => {
-  try {
-    const identifier: string | undefined = req.query.identifier as string | undefined;
+    try {
+        const identifier: string | undefined = req.query.identifier as string | undefined;
 
-    if (!identifier) {
-      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
-    }
-
-    if (reSPIRE.test(identifier)) {
-        const querySnapshot = await db.collection(userCollection)
-            .where('SPIRE_ID', '==', identifier)
-            .get();
-        
-        if (querySnapshot.empty) {
-            return res.status(404).send('User not found');
-        } else {
-            const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-            return res.status(200).json({ id: user.id, data: user.data() });
+        if (!identifier) {
+            return res.status(400).json({ error: 'Correct Identifier parameter is required' });
         }
-    } else if (reEmail.test(identifier)) {
-      const querySnapshot = await db.collection(userCollection)
-        .where('email', '==', identifier)
-        .get();
 
-      if (querySnapshot.empty) {
-        return res.status(404).send('User not found');
-      } else {
-        const user = querySnapshot.docs[0]; // Assuming there is only one matching user
-        return res.status(200).json({ id: user.id, data: user.data() });
-      }
+        if (reSPIRE.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', identifier)
+                .get();
+
+            if (querySnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+                return res.status(200).json({ id: user.id, data: user.data() });
+            }
+        } else if (reEmail.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+                .where('email', '==', identifier)
+                .get();
+
+            if (querySnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+                return res.status(200).json({ id: user.id, data: user.data() });
+            }
+        }
+    } catch (error) {
+        return res.status(500).send(error);
     }
-  } catch (error) {
-    return res.status(500).send(error);
-  }
 
-  // Default return statement to satisfy TypeScript
-  return res.status(500).send('An unexpected error occurred');
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
 });
 
 // get Gear by UID
 app.get('/api/getGearById', async (req: Request, res: Response) => {
-  try {
-  const identifier: string | undefined = req.query.identifier as string | undefined;
+    try {
+        const identifier: string | undefined = req.query.identifier as string | undefined;
 
-  if (!identifier) {
-      return res.status(400).json({ error: 'Correct Identifier parameter is required' });
-  }
+        if (!identifier) {
+            return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+        }
 
-  if (gearUID.test(identifier)) {
-      const querySnapshot = await db.collection(gearCollection)
-          .where('gearId', '==', identifier)
-          .get();
-      
-      if (querySnapshot.empty) {
-          return res.status(404).send('Gear not found with identifier: ' + identifier);
-      } else {
-          const gear = querySnapshot.docs[0]; // Assuming there is only one matching piece of gear
-          return res.status(200).json({ id: gear.id, data: gear.data() });
-      }
-  } 
-  } catch (error) {
-  return res.status(500).send(error);
-  }
+        if (gearUID.test(identifier)) {
+            const querySnapshot = await db.collection(gearCollection)
+                .where('gearId', '==', identifier)
+                .get();
 
-  // Default return statement to satisfy TypeScript
-  return res.status(500).send('An unexpected error occurred');
+            if (querySnapshot.empty) {
+                return res.status(404).send('Gear not found with identifier: ' + identifier);
+            } else {
+                const gear = querySnapshot.docs[0]; // Assuming there is only one matching piece of gear
+                return res.status(200).json({ id: gear.id, data: gear.data() });
+            }
+        }
+    } catch (error) {
+        return res.status(500).send(error);
+    }
+
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
 });
 
 // Delete a user
 app.delete('/api/users/:userId', (req, res) => {
     db.collection(userCollection).doc(req.params.userId).delete()
-    .then(()=>res.status(204).send("Document successfully deleted!"))
-    .catch(function (error) {
+        .then(() => res.status(204).send("Document successfully deleted!"))
+        .catch(function (error) {
             res.status(500).send(error);
-    });
+        });
 })
 
 // Update a user
 app.put('/api/users/:userId', async (req, res) => {
-    await db.collection(userCollection).doc(req.params.userId).set(req.body,{merge:true})
-    .then(()=> res.json({id:req.params.userId}))
-    .catch((error)=> res.status(500).send(error))
+    await db.collection(userCollection).doc(req.params.userId).set(req.body, { merge: true })
+        .then(() => res.json({ id: req.params.userId }))
+        .catch((error) => res.status(500).send(error))
 });
 
 /*
@@ -413,15 +420,15 @@ app.post('/api/checkInGear', async (req, res) => {
 */
 
 // Helper  function for checkGear : modulates the checkedOut flag for gear
-async function updateGearStatus(gearId: string, flag : string): Promise<void> {
+async function updateGearStatus(gearId: string, flag: string): Promise<void> {
     try {
-        if(flag == "checkOut") {
+        if (flag == "checkOut") {
             await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: true, 
+                checkedOut: true,
             });
         } else {
             await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: false, 
+                checkedOut: false,
             });
         }
     } catch (error) {
@@ -434,4 +441,28 @@ async function updateGearStatus(gearId: string, flag : string): Promise<void> {
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
     const snapshot = await db.collection(gearCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
+});
+
+//upload csv file
+app.post('/api/uploadCSV', upload.single('csvFile'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).send('No file uploaded.');
+    }
+    const csvBuffer = req.file.buffer;
+    const readStream = new Readable({
+        read() {
+            this.push(csvBuffer);
+            this.push(null);
+        }
+    });
+    const results: string[] = [];
+    readStream
+        .pipe(csvParser())
+        .on('data', (data: string) => results.push(data))
+        .on('end', () => {
+            // At this point, 'results' contains the parsed CSV content in JSON format.
+            console.log(results);
+            res.status(200).json(results);
+        });
+    return res.status(200)
 });
