@@ -226,6 +226,46 @@ app.get('/api/getUserById', async (req: Request, res: Response) => {
   return res.status(500).send('An unexpected error occurred');
 });
 
+// Get gear possessed by user by Email/SPIRE ID
+app.get('/api/getGearByUser/:identifier', async (req: Request, res: Response) => {
+    try {
+      const identifier: string | undefined = req.params.identifier as string | undefined;
+  
+      if (!identifier) {
+        return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+      }
+  
+        if (reSPIRE.test(identifier)) {
+          const querySnapshot = await db.collection(userCollection)
+              .where('SPIRE_ID', '==', identifier)
+              .get();
+          
+          if (querySnapshot.empty) {
+              return res.status(404).send('User not found');
+          } else {
+              const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+              return res.status(200).json({ id: user.id, data: user.data().possession });
+          }
+        } else if (reEmail.test(identifier)) {
+          const querySnapshot = await db.collection(userCollection)
+            .where('email', '==', identifier)
+            .get();
+  
+        if (querySnapshot.empty) {
+          return res.status(404).send('User not found');
+        } else {
+          const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+          return res.status(200).json({ id: user.id, data: user.data().possession });
+        }
+      }
+    } catch (error) {
+      return res.status(500).send(error);
+    }
+  
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
+});
+
 // get Gear by UID
 app.get('/api/getGearById', async (req: Request, res: Response) => {
   try {
