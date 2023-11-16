@@ -43,7 +43,7 @@ const auth = getAuth(firebase);
   Set of validation functions
 */
 
-function validateUserInputs(user : User, email: string, password: string) {
+function validateEmailAndPassword(email: string, password: string) {
 
   const reEmail = /\S+@\S+\.\S+/;
   const rePass = /^(?=(.*[a-z]){1,})(?=(.*[A-Z]){1,})(?=(.*[0-9]){1,})(?=(.*[!@#$%^&*()\-_+.]){1,}).{8,}$/;
@@ -58,6 +58,14 @@ function validateUserInputs(user : User, email: string, password: string) {
   if (!rePass.test(password)) {
     throw new Error("Password is bad format. Needs to be at least 8 characters with at least 1 lowercase, 1 uppercase, 1 number, and 1 special character.");
   }
+}
+
+function validateUserInputs(user: User) {
+  const reName = /^[a-z ,.'-]+$/i;
+  const rePerm = /^[0-2]$/;
+  const rePhone = /^(\d{1,2})?\d{10}$/;
+  const reSPIRE = /^[0-9]{8}$/
+
   if (!reName.test(user.name)) {
     throw new Error("Name is bad format. Name can only be letters, along with (,.'-) as permitted special characters.");
   }
@@ -77,28 +85,11 @@ function validateUserInputs(user : User, email: string, password: string) {
   }
 }
 
-function validateEmail(email: string) : boolean {
-  var re = /\S+@\S+\.\S+/;
-  return re.test(email);
-}
-
-function validatePassword(email: string) : boolean {
-  var re = /\S+@\S+\.\S+/;
-  return re.test(email);
-}
-
 function handleSignIn(email : string, password: string) {
   if (auth.currentUser) {
     auth.signOut();
   } else {
-    if (!validateEmail(email)) {
-      alert('Please enter a valid email address.');
-      return;
-    }
-    if (!validatePassword) { // might be unnecessary
-      alert('Please enter a password.');
-      return;
-    }
+    validateEmailAndPassword(email, password);
     // Sign in with email and pass.
     signInWithEmailAndPassword(auth, email, password).catch(function(error) {
       // Handle Errors here.
@@ -121,7 +112,8 @@ function handleSignIn(email : string, password: string) {
  */
 export async function handleSignUp(user: User, email: string, password: string) {
   try {
-    validateUserInputs(user, email, password);
+    validateEmailAndPassword(email, password);
+    validateUserInputs(user);
     const authUser = await createUserWithEmailAndPassword(auth, email, password);
     return authUser.user.uid;
   }

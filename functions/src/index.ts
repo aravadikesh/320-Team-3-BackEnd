@@ -188,7 +188,7 @@ app.get('/api/getAllusers', async (req, res) => {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
         userQuerySnapshot.forEach(
-            (doc)=>{
+            function(doc) {
                 users.push({
                     id: doc.id,
                     data:doc.data()
@@ -211,7 +211,9 @@ app.get('/api/getUser', (req: Request, res: Response) => {
       .doc(userId)
       .get()
       .then((user) => {
-        if (!user.exists) throw new Error('User not found');
+        if (!user.exists) {
+            throw new Error('User not found');
+        }
         res.status(200).json({ id: user.id, data: user.data() });
       })
       .catch((error) => res.status(500).send(error));
@@ -312,16 +314,16 @@ app.post('/api/checkOutGear', async (req, res) => {
             //JWT Token to auth that leader/manager is sending request
         }
 
-        // Logic : send put request to change status of gear, 
+        // Logic : send put request to change status of gear
 
         const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${newDoc.id}`);
+        res.status(200).send(`Gear Checked Out: ${newDoc.id}`);
     } catch (error) {
         res.status(400).send(`You messed up.`);
     }
 });
 
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
-    const snapshot = await db.collection(gearCollection).get()
+    const snapshot = await db.collection(gearCollection).get();
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
