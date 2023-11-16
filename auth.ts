@@ -1,7 +1,6 @@
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
 import { initializeApp } from 'firebase/app';
 
 /**
@@ -39,73 +38,43 @@ const firebaseConfig = {
 const firebase = initializeApp(firebaseConfig);
 const auth = getAuth(firebase);
 
-// const db = getFirestore(app);
-
-// // Get a list of cities from your database
-// async function getCities(db) {
-//   const citiesCol = collection(db, 'cities');
-//   const citySnapshot = await getDocs(citiesCol);
-//   const cityList = citySnapshot.docs.map(doc => doc.data());
-//   return cityList;
-// }
 
 /*
   Set of validation functions
 */
 
-function validateUser(user : User, email: string, password: string): boolean {
+function validateUserInputs(user : User, email: string, password: string) {
 
   const reEmail = /\S+@\S+\.\S+/;
-  const rePass = /.{8,}/;
+  const rePass = /^(?=(.*[a-z]){1,})(?=(.*[A-Z]){1,})(?=(.*[0-9]){1,})(?=(.*[!@#$%^&*()\-_+.]){1,}).{8,}$/;
   const reName = /^[a-z ,.'-]+$/i;
   const rePerm = /^[0-2]$/;
   const rePhone = /^(\d{1,2})?\d{10}$/;
   const reSPIRE = /^[0-9]{8}$/
   
   if (!reEmail.test(email)) {
-    console.log("bad email");
-    alert('Email is fucked')
+    throw new Error("Email is bad format.");
   }
-
   if (!rePass.test(password)) {
-    console.log("bad password");
-    alert('Password is fucked');
-    return false;
+    throw new Error("Password is bad format. Needs to be at least 8 characters with at least 1 lowercase, 1 uppercase, 1 number, and 1 special character.");
   }
-
   if (!reName.test(user.name)) {
-    console.log("bad name");
-    alert('Why does your name have a number in it');
-    return false;
-  } 
-
+    throw new Error("Name is bad format. Name can only be letters, along with (,.'-) as permitted special characters.");
+  }
   if (!rePerm.test(user.permLvl.toString())) {
-    console.log("bad permLvl");
-    alert('Why is your permLvl so high/low/illegal');
-    return false;
+    throw new Error("Permission level is not 0, 1, or 2.");
   }
-
   if (!rePhone.test(user.phoneNum.toString())) {
-    console.log("bad phoneNum");
-    alert('Why is your phone number messed up');
-    return false;
+    throw new Error("Phone number is not a 10-12 digit integer.");
   }
-
   if (user.waiver == null) {
-    console.log("no waiver");
-    alert('waiver info unavailable');
-    return false;
+    throw new Error("Waiver value is missing. Please set it to true or false.");
   }
-
   if (user.SPIRE_ID != null) {
     if(!reSPIRE.test(user.SPIRE_ID.toString())) {
-      console.log("bad SPIRE");
-      alert('SPIRE ID is fucked');
-      return false;
+      throw new Error("SPIRE ID is not an 8-digit integer.");
     }
   }
-
-  return true;
 }
 
 function validateEmail(email: string) : boolean {
@@ -152,9 +121,9 @@ function handleSignIn(email : string, password: string) {
  */
 export async function handleSignUp(user: User, email: string, password: string) {
   try {
-    if (!validateUser(user, email, password))
-      return;
-    await createUserWithEmailAndPassword(auth, email, password);
+    validateUserInputs(user, email, password);
+    const authUser = await createUserWithEmailAndPassword(auth, email, password);
+    return authUser.user.uid;
   }
   catch(error) {
     throw error;

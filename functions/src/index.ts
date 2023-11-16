@@ -54,6 +54,7 @@ export interface User {
      * false for expired, true for signed and valid
      */
     waiver: boolean;
+    possession: string[];
     [property: string]: any;
 }
 
@@ -167,18 +168,17 @@ app.post('/api/createUser', async (req, res) => {
         const user: User = {
             email: req.body['email'],
             name: req.body['name'], // Might have to be changed to only post the fullName
-            permLvl: req.body['permLevel'],
-            phoneNum: req.body['contactNumber'],
-            SPIRE_ID: req.body['id'],
+            permLvl: req.body['permLvl'],
+            phoneNum: req.body['phoneNum'],
+            SPIRE_ID: req.body['SPIRE_ID'],
             waiver: req.body['waiver'],
-        }
-        await handleSignUp(user, user.email, "testPassword");
-        console.log("SIGN UP HANDLED");
-        const newDoc = await db.collection(userCollection).add(user);
-        res.status(200).send(`Created a new user: ${newDoc.id}`);
+            possession: req.body['possession']
+        };
+        const userUID = await handleSignUp(user, user.email, "testPassword");
+        await db.collection(userCollection).doc(userUID).set(user);
+        res.status(200).send(`Created a new user: ${userUID}`);
     } catch (error) {
-        console.log("CREATE USER ERROR: " + error);
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
+        res.status(400).send("" + error);
     }
 });
 
