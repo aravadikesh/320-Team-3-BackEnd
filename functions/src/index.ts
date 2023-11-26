@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
-import { handleSignUp } from '../../auth';
+import { handleSignUp, handleSignIn, signOutUser } from '../../auth';
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -168,6 +168,32 @@ app.post('/api/createUser', async (req, res) => {
         res.status(400).send("" + error);
     }
 });
+
+// Login a user
+app.get('/api/loginUser', async (req, res) => {
+    try {
+        const input = {
+            email: req.body['email'],
+            password: req.body['password']
+        };
+
+        const userUID = await handleSignIn(input.email, input.password);
+
+        db.collection(userCollection)
+            .doc(userUID)
+            .get()
+            .then((user) => {
+                if (!user.exists) {
+                    throw new Error('User not found');
+                }
+                res.status(200).send(`Signed in user: ${user.data()}`);
+            });
+    } catch (error) {
+        res.status(400).send("" + error);
+    }
+});
+
+
 
 // Get all users
 app.get('/api/getAllusers', async (req, res) => {

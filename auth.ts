@@ -1,6 +1,6 @@
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp } from 'firebase/app';
 
 /**
@@ -22,7 +22,6 @@ export interface User {
   [property: string]: any;
 }
 
-
 // TODO: Replace the following with your app's Firebase project configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD2DGbqtksrFhzVdfPXOWzPq451PeOdghM",
@@ -37,7 +36,6 @@ const firebaseConfig = {
 
 const firebase = initializeApp(firebaseConfig);
 const auth = getAuth(firebase);
-
 
 /*
   Set of validation functions
@@ -85,26 +83,16 @@ function validateUserInputs(user: User) {
   }
 }
 
-function handleSignIn(email : string, password: string) {
-  if (auth.currentUser) {
-    auth.signOut();
-  } else {
+export async function handleSignIn(email : string, password: string) {
+  try {
     validateEmailAndPassword(email, password);
     // Sign in with email and pass.
-    signInWithEmailAndPassword(auth, email, password).catch(function(error) {
-      // Handle Errors here.
-      var errorCode = error.code;
-      var errorMessage = error.message;
-      if (errorCode === 'auth/wrong-password') {
-        alert('Wrong password.');
-      } else {
-        alert(errorMessage);
-      }
-      console.log(error);
-      //document.getElementById('quickstart-sign-in').disabled = false;
-    });
-  }
-  //document.getElementById('quickstart-sign-in').disabled = true;
+    const authUser = await signInWithEmailAndPassword(auth, email, password)
+    return authUser.user.uid;
+  } catch (error) {
+    // Handle Errors here.
+    throw error;
+  } 
 }
 
 /**
@@ -121,3 +109,12 @@ export async function handleSignUp(user: User, email: string, password: string) 
     throw error;
   }
 }
+
+export async function signOutUser() {
+  signOut(auth).then(() => {
+    // Sign-out successful.
+  }).catch((error) => {
+    throw error;
+  });
+}
+
