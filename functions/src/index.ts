@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
-
+import { handleSignUp } from '../../auth';
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -36,7 +36,7 @@ export interface User {
      */
     permLvl: number;
     phoneNum: number;
-    SPIRE_ID?: string;
+    SPIRE_ID?: number;
     /**
      * false for expired, true for signed and valid
      */
@@ -155,16 +155,36 @@ app.post('/api/createUser', async (req, res) => {
         const user: User = {
             email: req.body['email'],
             name: req.body['name'], // Might have to be changed to only post the fullName
-            permLvl: req.body['permLevel'],
-            phoneNum: req.body['contactNumber'],
-            SPIRE_ID: req.body['id'],
+            permLvl: req.body['permLvl'],
+            phoneNum: req.body['phoneNum'],
+            SPIRE_ID: req.body['SPIRE_ID'],
             waiver: req.body['waiver'],
             possession: req.body['possession'],
-            ...req.body  // Include any additional properties sent by the client
-        }
-        const newDoc = await db.collection(userCollection).add(user);
-        res.status(201).send(`Created a new user: ${newDoc.id}`);
+        };
+        const userUID = await handleSignUp(user, user.email, "testPassword");
+        await db.collection(userCollection).doc(userUID).set(user);
+        res.status(200).send(`Created a new user: ${userUID}`);
     } catch (error) {
+        res.status(400).send("" + error);
+    }
+});
+
+// Get all users
+app.get('/api/getAllusers', async (req, res) => {
+    try {
+        const userQuerySnapshot = await db.collection(userCollection).get();
+        const users: any[] = [];
+        userQuerySnapshot.forEach(
+            function(doc) {
+                users.push({
+                    id: doc.id,
+                    data:doc.data()
+                });
+            }
+        );
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).send(error);
         res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, waiver, and possession fields, along with any additional properties.`);
     }
 });
@@ -179,7 +199,9 @@ app.get('/api/getUser', (req: Request, res: Response) => {
       .doc(userId)
       .get()
       .then((user) => {
-        if (!user.exists) throw new Error('User not found');
+        if (!user.exists) {
+            throw new Error('User not found');
+        }
         res.status(200).json({ id: user.id, data: user.data() });
       })
       .catch((error) => res.status(500).send(error));
@@ -418,7 +440,7 @@ async function updateUserPossession(gearId: string, userId: string, flag: string
 
 // Returns all gear objects
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
-    const snapshot = await db.collection(gearCollection).get()
+    const snapshot = await db.collection(gearCollection).get();
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
 
@@ -427,3 +449,5 @@ app.get('/api/getAllUsers', async (req: Request, res: Response) => {
     const snapshot = await db.collection(userCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
+
+
