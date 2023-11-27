@@ -45,10 +45,6 @@ function validateEmailAndPassword(email: string, password: string) {
 
   const reEmail = /\S+@\S+\.\S+/;
   const rePass = /^(?=(.*[a-z]){1,})(?=(.*[A-Z]){1,})(?=(.*[0-9]){1,})(?=(.*[!@#$%^&*()\-_+.]){1,}).{8,}$/;
-  const reName = /^[a-z ,.'-]+$/i;
-  const rePerm = /^[0-2]$/;
-  const rePhone = /^(\d{1,2})?\d{10}$/;
-  const reSPIRE = /^[0-9]{8}$/
   
   if (!reEmail.test(email)) {
     throw new Error("Email is bad format.");
@@ -89,7 +85,8 @@ export async function handleSignIn(email : string, password: string) {
     // Sign in with email and pass.
     const authUser = await signInWithEmailAndPassword(auth, email, password)
     return authUser.user.uid;
-  } catch (error) {
+  }
+  catch (error) {
     // Handle Errors here.
     throw error;
   } 
@@ -105,7 +102,7 @@ export async function handleSignUp(user: User, email: string, password: string) 
     const authUser = await createUserWithEmailAndPassword(auth, email, password);
     return authUser.user.uid;
   }
-  catch(error) {
+  catch (error) {
     throw error;
   }
 }
