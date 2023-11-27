@@ -14,12 +14,8 @@ import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
 
-//imports for csv upload
-import * as multer from 'multer';
 import * as csvParser from 'csv-parser';
 import { Readable } from 'stream';
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 
 //initialize firebase in order to access its services
@@ -28,6 +24,7 @@ admin.initializeApp(functions.config().firebase);
 //initialize express server
 const app = express();
 app.use(cors({ origin: true }));
+
 
 //initialize the database and the collection 
 const db = admin.firestore();
@@ -443,12 +440,24 @@ app.get('/api/getAllGear', async (req: Request, res: Response) => {
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
 
+
+
+// when there is time read https://expressjs.com/en/resources/middleware/multer.html
+// that should help make this work even talks about storage.
 //upload csv file
-app.post('/api/uploadCSV', upload.single('csvFile'), async (req, res) => {
-    if (!req.file) {
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.post('/api/uploadCSV', (req, res) => {
+
+    console.log("req body string: ", req.body.toString());
+
+
+    if (!req.body) {
+        console.log(req.file);
         return res.status(400).send('No file uploaded.');
     }
-    const csvBuffer = req.file.buffer;
+    const csvBuffer = req.body.toString();
     const readStream = new Readable({
         read() {
             this.push(csvBuffer);
