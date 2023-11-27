@@ -1,7 +1,6 @@
 // Follow this pattern to import other Firebase services
 // import { } from 'firebase/<service>';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { getFirestore, collection, getDocs } from 'firebase/firestore/lite';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { initializeApp } from 'firebase/app';
 
 /**
@@ -15,14 +14,13 @@ export interface User {
    */
   permLvl: number;
   phoneNum: number;
-  SPIRE_ID?: number;
+  SPIRE_ID?: string;
   /**
    * false for expired, true for signed and valid
    */
   waiver: boolean;
   [property: string]: any;
 }
-
 
 // TODO: Replace the following with your app's Firebase project configuration
 const firebaseConfig = {
@@ -39,124 +37,81 @@ const firebaseConfig = {
 const firebase = initializeApp(firebaseConfig);
 const auth = getAuth(firebase);
 
-// const db = getFirestore(app);
-
-// // Get a list of cities from your database
-// async function getCities(db) {
-//   const citiesCol = collection(db, 'cities');
-//   const citySnapshot = await getDocs(citiesCol);
-//   const cityList = citySnapshot.docs.map(doc => doc.data());
-//   return cityList;
-// }
-
 /*
   Set of validation functions
 */
 
-function validateUser(user : User, email: string, password: string): boolean {
+function validateEmailAndPassword(email: string, password: string) {
 
   const reEmail = /\S+@\S+\.\S+/;
-  const rePass = /.{8,}/;
-  const reName = /^[a-z ,.'-]+$/i;
-  const rePerm = /^[0-2]$/;
-  const rePhone = /^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/;
-  const reSPIRE = /^[0-9]{8}$/
+  const rePass = /^(?=(.*[a-z]){1,})(?=(.*[A-Z]){1,})(?=(.*[0-9]){1,})(?=(.*[!@#$%^&*()\-_+.]){1,}).{8,}$/;
   
   if (!reEmail.test(email)) {
-    alert('Email is fucked')
+    throw new Error("Email is bad format.");
   }
-
   if (!rePass.test(password)) {
-    alert('Password is fucked');
-    return false;
+    throw new Error("Password is bad format. Needs to be at least 8 characters with at least 1 lowercase, 1 uppercase, 1 number, and 1 special character.");
   }
+}
+
+function validateUserInputs(user: User) {
+  const reName = /^[a-z ,.'-]+$/i;
+  const rePerm = /^[0-2]$/;
+  const rePhone = /^(\d{1,2})?\d{10}$/;
+  const reSPIRE = /^[0-9]{8}$/
 
   if (!reName.test(user.name)) {
-    alert('Why does your name have a number in it');
-    return false;
-  } 
-
+    throw new Error("Name is bad format. Name can only be letters, along with (,.'-) as permitted special characters.");
+  }
   if (!rePerm.test(user.permLvl.toString())) {
-    alert('Why is your permLvl so high/low/illegal');
-    return false;
+    throw new Error("Permission level is not 0, 1, or 2.");
   }
-
   if (!rePhone.test(user.phoneNum.toString())) {
-    alert('Why is your phone number messed up');
-    return false;
+    throw new Error("Phone number is not a 10-12 digit integer.");
   }
-
   if (user.waiver == null) {
-    alert('waiver info unavailable');
-    return false;
+    throw new Error("Waiver value is missing. Please set it to true or false.");
   }
-
   if (user.SPIRE_ID != null) {
-    if(reSPIRE.test(user.SPIRE_ID.toString())) {
-      alert('SPIRE ID is fucked');
-      return false;
+    if(!reSPIRE.test(user.SPIRE_ID.toString())) {
+      throw new Error("SPIRE ID is not an 8-digit integer.");
     }
   }
-
-  return true;
 }
 
-function validateEmail(email: string) : boolean {
-  var re = /\S+@\S+\.\S+/;
-  return re.test(email);
-}
-
-function validatePassword(email: string) : boolean {
-  var re = /\S+@\S+\.\S+/;
-  return re.test(email);
-}
-
-function handleSignIn(email : string, password: string) {
-  if (auth.currentUser) {
-    auth.signOut();
-  } else {
-    if (!validateEmail(email)) {
-      alert('Please enter a valid email address.');
-      return;
-    }
-    if (!validatePassword) { // might be unnecessary
-      alert('Please enter a password.');
-      return;
-    }
+export async function handleSignIn(email : string, password: string) {
+  try {
+    validateEmailAndPassword(email, password);
     // Sign in with email and pass.
-    signInWithEmailAndPassword(auth, email, password).catch(function(error) {
-      // Handle Errors here.
-      var errorCode = error.code;
-      var errorMessage = error.message;
-      if (errorCode === 'auth/wrong-password') {
-        alert('Wrong password.');
-      } else {
-        alert(errorMessage);
-      }
-      console.log(error);
-      //document.getElementById('quickstart-sign-in').disabled = false;
-    });
+    const authUser = await signInWithEmailAndPassword(auth, email, password)
+    return authUser.user.uid;
   }
-  //document.getElementById('quickstart-sign-in').disabled = true;
+  catch (error) {
+    // Handle Errors here.
+    throw error;
+  } 
 }
 
 /**
  * Handles the sign up button press.
  */
-function handleSignUp(user: User, email: string, password: string, ) {
-  if(!validateUser(user, email, password))
-    return;
-  // Create user with email and pass.
-  createUserWithEmailAndPassword(auth, email, password).catch(function(error) {
-    // Handle Errors here.
-    var errorCode = error.code;
-    var errorMessage = error.message;
-    if (errorCode == 'auth/weak-password') {
-      alert('The password is too weak.');
-    } else {
-      alert(errorMessage);
-    }
-    console.log(error);
-  });
-  // need to update user collection here
+export async function handleSignUp(user: User, email: string, password: string) {
+  try {
+    validateEmailAndPassword(email, password);
+    validateUserInputs(user);
+    const authUser = await createUserWithEmailAndPassword(auth, email, password);
+    return authUser.user.uid;
+  }
+  catch (error) {
+    throw error;
+  }
 }
+
+export async function signOutUser() {
+  signOut(auth).then(() => {
+    // Sign-out successful.
+  }).catch((error) => {
+    throw error;
+  });
+}
+

@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
-
+import { handleSignUp, handleSignIn, signOutUser } from '../../auth';
 import * as csvParser from 'csv-parser';
 import { Readable } from 'stream';
 
@@ -158,36 +158,89 @@ app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
-            name: req.body['name'], // Might have to be changed to only post the fullName
-            permLvl: req.body['permLevel'],
-            phoneNum: req.body['contactNumber'],
-            SPIRE_ID: req.body['id'],
+            name: req.body['name'], 
+            permLvl: req.body['permLvl'],
+            phoneNum: req.body['phoneNum'],
+            SPIRE_ID: req.body['SPIRE_ID'],
             waiver: req.body['waiver'],
             possession: req.body['possession'],
-            ...req.body  // Include any additional properties sent by the client
-        }
-        const newDoc = await db.collection(userCollection).add(user);
-        res.status(200).send(`Created a new user: ${newDoc.id}`);
+        };
+        const userUID = await handleSignUp(user, user.email, req.body['password']);
+        await db.collection(userCollection).doc(userUID).set(user);
+        res.status(200).send(`Created a new user: ${userUID}`);
     } catch (error) {
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, waiver, and possession fields, along with any additional properties.`);
+        res.status(400).send("" + error);
+    }
+});
+
+// Login a user
+app.get('/api/loginUser', async (req, res) => {
+    try {
+        const input = {
+            email: req.body['email'],
+            password: req.body['password']
+        };
+
+        const userUID = await handleSignIn(input.email, input.password);
+
+        db.collection(userCollection)
+            .doc(userUID)
+            .get()
+            .then((user) => {
+                if (!user.exists) {
+                    throw new Error('User not found');
+                }
+                res.status(200).send(`Signed in user: ${user.data()}`);
+            });
+    } catch (error) {
+        res.status(400).send("" + error);
+    }
+});
+
+// Sign out a user
+app.get('/api/signOutUser', async (req, res) => {
+    try {
+        await signOutUser();
+    } catch (error) {
+        res.status(400).send("" + error);
+    }
+});
+
+// Get all users
+app.get('/api/getAllusers', async (req, res) => {
+    try {
+        const userQuerySnapshot = await db.collection(userCollection).get();
+        const users: any[] = [];
+        userQuerySnapshot.forEach(
+            function(doc) {
+                users.push({
+                    id: doc.id,
+                    data:doc.data()
+                });
+            }
+        );
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).send(error);
+        res.status(400).send(`User should contain email, name, permissionLevel, phoneNumber, id, waiver, and possession fields, along with any additional properties.`);
     }
 });
 
 // Get a single user by firebase ID
 app.get('/api/getUser', (req: Request, res: Response) => {
-    const userId: string | undefined = req.query.userId as string | undefined;
-    if (!userId) {
-        return res.status(400).json({ error: 'userId parameter is required' });
-    } else {
-        return db.collection(userCollection)
-            .doc(userId)
-            .get()
-            .then((user) => {
-                if (!user.exists) throw new Error('User not found');
-                res.status(200).json({ id: user.id, data: user.data() });
-            })
-            .catch((error) => res.status(500).send(error));
-    }
+  const userId: string | undefined = req.query.userId as string | undefined; 
+  if (!userId) {
+    return res.status(400).json({ error: 'userId parameter is required' });
+  } else {
+    return db.collection(userCollection)
+      .doc(userId)
+      .get()
+      .then((user) => {
+        if (!user.exists) throw new Error('User not found');
+        res.status(200).json({ id: user.id, data: user.data() });
+      })
+      .catch((error) => res.status(500).send(error));
+  }
 });
 
 // Get user by Email/SPIRE ID
@@ -367,7 +420,7 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
             return res.status(400).send('Incorrect specifications received');
         }
         const newDoc = await db.collection(logCollection).add(check);
-        return res.status(201).send(`Gear Checked Out bruh: ${gearID} \n Transaction ID : ${newDoc.id}`);
+        return res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
     } catch (error) {
         console.error(error);
         return res.status(500).send(`An unexpected error occurred: ${error}`);
@@ -422,7 +475,7 @@ async function updateUserPossession(gearId: string, userId: string, flag: string
 
 // Returns all gear objects
 app.get('/api/getAllGear', async (req: Request, res: Response) => {
-    const snapshot = await db.collection(gearCollection).get()
+    const snapshot = await db.collection(gearCollection).get();
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
 
@@ -465,3 +518,13 @@ app.get('/api/getAllUsers', async (req: Request, res: Response) => {
     const snapshot = await db.collection(userCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
+
+async function deleteAllGear(): Promise<void> {
+    try {
+        const gearSnapshot = await db.collection(gearCollection).get();
+        const deletePromises = gearSnapshot.docs.map((doc) => doc.ref.delete());
+        await Promise.all(deletePromises);
+    } catch (error) {
+        throw new Error('Failed to delete all gear: ' + error);
+    }
+}

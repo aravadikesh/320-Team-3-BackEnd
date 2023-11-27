@@ -12,7 +12,7 @@
   "engines": {
     "node": "18"
   },
-  "main": "lib/index.js",
+  "main": "lib/functions/src/index.js",
   "dependencies": {
     "body-parser": "^1.20.2",
     "csv-parser": "^3.0.0",

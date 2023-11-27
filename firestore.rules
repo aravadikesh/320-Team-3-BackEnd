@@ -27,7 +27,8 @@ service cloud.firestore {
     	}
     }
   	match /users/{userId} {
-    	allow read: if request.auth != null && get(/databases/users/$(request.auth.uid)).permLvl > 0;
+    	allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).permLvl > 0;
+      allow create: if request.auth != null && get(/databases/$(database)/documents/users/emails/$(request.resource.data.email)) == null;
       allow update, delete: if request.auth != null && request.auth.uid == userId;
   	}
   }
