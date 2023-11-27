@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
-import { handleSignUp, handleSignIn } from '../../auth';
+import { handleSignUp, handleSignIn, signOutUser } from '../../auth';
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -218,7 +218,7 @@ app.get('/api/getAllusers', async (req, res) => {
         res.status(200).json(users);
     } catch (error) {
         res.status(500).send(error);
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, waiver, and possession fields, along with any additional properties.`);
+        res.status(400).send(`User should contain email, name, permissionLevel, phoneNumber, id, waiver, and possession fields, along with any additional properties.`);
     }
 });
 
