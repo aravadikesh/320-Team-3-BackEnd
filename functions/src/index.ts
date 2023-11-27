@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 import * as express from 'express';
 import * as cors from "cors";
 import { Request, Response } from 'express';
-import { handleSignUp, handleSignIn, signOutUser } from '../../auth';
+import { handleSignUp, handleSignIn } from '../../auth';
 
 //initialize firebase in order to access its services
 admin.initializeApp(functions.config().firebase);
@@ -161,7 +161,7 @@ app.post('/api/createUser', async (req, res) => {
             waiver: req.body['waiver'],
             possession: req.body['possession'],
         };
-        const userUID = await handleSignUp(user, user.email, "testPassword");
+        const userUID = await handleSignUp(user, user.email, req.body['password']);
         await db.collection(userCollection).doc(userUID).set(user);
         res.status(200).send(`Created a new user: ${userUID}`);
     } catch (error) {
@@ -411,7 +411,7 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
             return res.status(400).send('Incorrect specifications received');
         }
         const newDoc = await db.collection(logCollection).add(check);
-        return res.status(201).send(`Gear Checked Out bruh: ${gearID} \n Transaction ID : ${newDoc.id}`);
+        return res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
     } catch (error) {
         console.error(error);
         return res.status(500).send(`An unexpected error occurred: ${error}`);
