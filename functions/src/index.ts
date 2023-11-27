@@ -193,7 +193,14 @@ app.get('/api/loginUser', async (req, res) => {
     }
 });
 
-
+// Sign out a user
+app.get('/api/signOutUser', async (req, res) => {
+    try {
+        await signOutUser();
+    } catch (error) {
+        res.status(400).send("" + error);
+    }
+});
 
 // Get all users
 app.get('/api/getAllusers', async (req, res) => {
