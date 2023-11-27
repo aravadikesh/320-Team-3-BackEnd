@@ -1,12 +1,3 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
 // import libraries
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
@@ -54,6 +45,7 @@ export interface User {
      * false for expired, true for signed and valid
      */
     waiver: boolean;
+    possession: string[];
     [property: string]: any;
 }
 
@@ -171,31 +163,13 @@ app.post('/api/createUser', async (req, res) => {
             phoneNum: req.body['contactNumber'],
             SPIRE_ID: req.body['id'],
             waiver: req.body['waiver'],
+            possession: req.body['possession'],
             ...req.body  // Include any additional properties sent by the client
         }
         const newDoc = await db.collection(userCollection).add(user);
         res.status(200).send(`Created a new user: ${newDoc.id}`);
     } catch (error) {
-        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, and waiver fields, along with any additional properties.`);
-    }
-});
-
-// Get all users
-app.get('/api/getAllusers', async (req, res) => {
-    try {
-        const userQuerySnapshot = await db.collection(userCollection).get();
-        const users: any[] = [];
-        userQuerySnapshot.forEach(
-            (doc) => {
-                users.push({
-                    id: doc.id,
-                    data: doc.data()
-                });
-            }
-        );
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).send(error);
+        res.status(400).send(`User should contain email, name, permissionLevel, contactNumber, id, waiver, and possession fields, along with any additional properties.`);
     }
 });
 
@@ -246,6 +220,46 @@ app.get('/api/getUserById', async (req: Request, res: Response) => {
             } else {
                 const user = querySnapshot.docs[0]; // Assuming there is only one matching user
                 return res.status(200).json({ id: user.id, data: user.data() });
+            }
+        }
+    } catch (error) {
+        return res.status(500).send(error);
+    }
+
+    // Default return statement to satisfy TypeScript
+    return res.status(500).send('An unexpected error occurred');
+});
+
+// Get gear possessed by user by Email/SPIRE ID
+app.get('/api/getGearByUser/:identifier', async (req: Request, res: Response) => {
+    try {
+        const identifier: string | undefined = req.params.identifier as string | undefined;
+
+        if (!identifier) {
+            return res.status(400).json({ error: 'Correct Identifier parameter is required' });
+        }
+
+        if (reSPIRE.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+                .where('SPIRE_ID', '==', identifier)
+                .get();
+
+            if (querySnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+                return res.status(200).json({ id: user.id, data: user.data().possession });
+            }
+        } else if (reEmail.test(identifier)) {
+            const querySnapshot = await db.collection(userCollection)
+                .where('email', '==', identifier)
+                .get();
+
+            if (querySnapshot.empty) {
+                return res.status(404).send('User not found');
+            } else {
+                const user = querySnapshot.docs[0]; // Assuming there is only one matching user
+                return res.status(200).json({ id: user.id, data: user.data().possession });
             }
         }
     } catch (error) {
@@ -330,7 +344,7 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
                 .where('SPIRE_ID', '==', leadId)
                 .get();
             const gearSnapshot = await db.collection(gearCollection)
-                .where('gearId', '==', check.gearID)
+                .where('gearId', '==', gearID)
                 .get();
 
             if (userSnapshot.empty) {
@@ -341,95 +355,67 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
                 return res.status(404).send('Gear not found');
             } else {
                 // Assuming there is only one matching user, leader, and gear
-                // const user = userSnapshot.docs[0]; 
+                const user = userSnapshot.docs[0];
                 // const leader = leaderSnapshot.docs[0];
                 const gear = gearSnapshot.docs[0];
 
                 // Update the status of the checked-out gear 
+                await updateUserPossession(gearID, user.id, flag)
                 await updateGearStatus(gear.id, flag);
             }
         } else {
             return res.status(400).send('Incorrect specifications received');
         }
         const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
+        return res.status(201).send(`Gear Checked Out bruh: ${gearID} \n Transaction ID : ${newDoc.id}`);
     } catch (error) {
         console.error(error);
-        res.status(500).send('An unexpected error occurred');
+        return res.status(500).send(`An unexpected error occurred: ${error}`);
     }
-    // Default return statement to satisfy TypeScript
-    return res.status(500).send('An unexpected error occurred');
 });
-
-/*
-app.post('/api/checkInGear', async (req, res) => {
-    try {
-        const check: Check = {
-            date: req.body['date'],
-            gearID: req.body['gearID'],
-            userSPIRE_ID: req.body['userID'],
-            leadSPIRE_ID: req.body['leaderID'],
-            // JWT Token to auth that leader/manager is sending a request
-        };
-
-        const gearID = check.gearID;
-        const userID = check.userSPIRE_ID;
-        const leadId = check.leadSPIRE_ID;
-
-        if (reSPIRE.test(userID) && reSPIRE.test(leadId) && gearUID.test(gearID)) {
-            const userSnapshot = await db.collection(userCollection)
-                .where('SPIRE_ID', '==', userID)
-                .get();
-            const leaderSnapshot = await db.collection(userCollection)
-                .where('SPIRE_ID', '==', leadId)
-                .get();
-            const gearSnapshot = await db.collection(gearCollection)
-                .where('gearId', '==', check.gearID)
-                .get();
-
-            if (userSnapshot.empty) {
-                return res.status(404).send('User not found');
-            } else if (leaderSnapshot.empty) {
-                return res.status(404).send('Leader not found');
-            } else if (gearSnapshot.empty) {
-                return res.status(404).send('Gear not found');
-            } else {
-                // Assuming there is only one matching user, leader, and gear
-                // const user = userSnapshot.docs[0]; 
-                // const leader = leaderSnapshot.docs[0];
-                const gear = gearSnapshot.docs[0];
-
-                // Update the status of the checked-out gear 
-                await updateGearStatus(gear.id);
-            }
-        } else {
-            return res.status(400).send('Incorrect specifications received');
-        }
-        const newDoc = await db.collection(logCollection).add(check);
-        res.status(201).send(`Gear Checked Out: ${gearID} \n Transaction ID : ${newDoc.id}`);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('An unexpected error occurred');
-    }
-    // Default return statement to satisfy TypeScript
-    return res.status(500).send('An unexpected error occurred');
-});
-*/
 
 // Helper  function for checkGear : modulates the checkedOut flag for gear
+// Note gearId here refers to the firebase ID not the UID we assign for gear
 async function updateGearStatus(gearId: string, flag: string): Promise<void> {
     try {
-        if (flag == "checkOut") {
-            await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: true,
-            });
-        } else {
-            await db.collection(gearCollection).doc(gearId).update({
-                checkedOut: false,
-            });
-        }
+        const gearRef = db.collection(gearCollection).doc(gearId);
+        const updateData = { checkedOut: flag === "checkOut" };
+        await gearRef.update(updateData);
     } catch (error) {
         console.error(`Error updating gear status: ${error}`);
+        throw new Error('Failed to update gear status');
+    }
+}
+
+// Helper function for checkGear : updates User possession of gear
+// Note gearId here refers to the UID we assign for gear
+async function updateUserPossession(gearId: string, userId: string, flag: string): Promise<void> {
+    try {
+        const userRef = db.collection(userCollection).doc(userId);
+        const user = await userRef.get();
+
+        if (flag === "checkOut") {
+            if (user.exists) {
+                const updatedPossession = [...user.data()?.possession || [], gearId];
+                await userRef.update({ possession: updatedPossession });
+            } else {
+                throw new Error('Failed to update gear status');
+            }
+        } else if (flag === "checkIn") {
+            if (user.exists) {
+                const possessionArray = user.data()?.possession || [];
+                if (possessionArray.includes(gearId)) {
+                    const updatedPossession = possessionArray.filter((id: string) => id !== gearId);
+                    await userRef.update({ possession: updatedPossession });
+                } else {
+                    throw new Error(`User does not have gear with ID ${gearId} in possession.`);
+                }
+            }
+        } else {
+            throw new Error(`Invalid flag: ${flag}`);
+        }
+    } catch (error) {
+        console.error(`Error updating user possession status: ${error}`);
         throw new Error('Failed to update gear status');
     }
 }
@@ -439,7 +425,6 @@ app.get('/api/getAllGear', async (req: Request, res: Response) => {
     const snapshot = await db.collection(gearCollection).get()
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
-
 
 
 // when there is time read https://expressjs.com/en/resources/middleware/multer.html
@@ -474,4 +459,9 @@ app.post('/api/uploadCSV', (req, res) => {
             res.status(200).json(results);
         });
     return res.status(200)
+});
+// Returns all users
+app.get('/api/getAllUsers', async (req: Request, res: Response) => {
+    const snapshot = await db.collection(userCollection).get()
+    return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
