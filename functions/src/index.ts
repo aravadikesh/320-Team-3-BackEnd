@@ -36,7 +36,7 @@ export interface User {
      */
     permLvl: number;
     phoneNum: number;
-    SPIRE_ID?: number;
+    SPIRE_ID?: string;
     /**
      * false for expired, true for signed and valid
      */
@@ -154,7 +154,7 @@ app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
-            name: req.body['name'], // Might have to be changed to only post the fullName
+            name: req.body['name'], 
             permLvl: req.body['permLvl'],
             phoneNum: req.body['phoneNum'],
             SPIRE_ID: req.body['SPIRE_ID'],
