@@ -14,7 +14,7 @@ export interface User {
    */
   permLvl: number;
   phoneNum: number;
-  SPIRE_ID?: number;
+  SPIRE_ID?: string;
   /**
    * false for expired, true for signed and valid
    */
