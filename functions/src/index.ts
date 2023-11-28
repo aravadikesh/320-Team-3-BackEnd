@@ -161,6 +161,7 @@ app.post('/api/createUser', async (req, res) => {
             waiver: req.body['waiver'],
             possession: req.body['possession'],
         };
+        console.log(user);
         const userUID = await handleSignUp(user, user.email, req.body['password']);
         await db.collection(userCollection).doc(userUID).set(user);
         res.status(200).send(`Created a new user: ${userUID}`);
@@ -170,7 +171,7 @@ app.post('/api/createUser', async (req, res) => {
 });
 
 // Login a user
-app.get('/api/loginUser', async (req, res) => {
+app.post('/api/loginUser', async (req, res) => {
     try {
         const input = {
             email: req.body['email'],
@@ -483,12 +484,12 @@ app.get('/api/getAllUsers', async (req: Request, res: Response) => {
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
 
-async function deleteAllGear(): Promise<void> {
-    try {
-        const gearSnapshot = await db.collection(gearCollection).get();
-        const deletePromises = gearSnapshot.docs.map((doc) => doc.ref.delete());
-        await Promise.all(deletePromises);
-    } catch (error) {
-        throw new Error('Failed to delete all gear: ' + error);
-    }
-}
+// async function deleteAllGear(): Promise<void> {
+//     try {
+//         const gearSnapshot = await db.collection(gearCollection).get();
+//         const deletePromises = gearSnapshot.docs.map((doc) => doc.ref.delete());
+//         await Promise.all(deletePromises);
+//     } catch (error) {
+//         throw new Error('Failed to delete all gear: ' + error);
+//     }
+// }
