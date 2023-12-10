@@ -65,3 +65,11 @@ You will receive a link from which the API calls are being hosted. If you have a
 
 
 ## Contributing
+# run project locally
+- run firebase init hosting
+   - say No to web framework
+- /test-hosting run npm i
+- /functions run npm i
+- /functions run npm run build
+- /prject-backend run firebase emulators:start
+
