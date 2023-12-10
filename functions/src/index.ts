@@ -158,7 +158,7 @@ app.post('/api/createUser', async (req, res) => {
     try {
         const user: User = {
             email: req.body['email'],
-            name: req.body['name'], 
+            name: req.body['name'],
             permLvl: req.body['permLvl'],
             phoneNum: req.body['phoneNum'],
             SPIRE_ID: req.body['SPIRE_ID'],
@@ -212,10 +212,10 @@ app.get('/api/getAllusers', async (req, res) => {
         const userQuerySnapshot = await db.collection(userCollection).get();
         const users: any[] = [];
         userQuerySnapshot.forEach(
-            function(doc) {
+            function (doc) {
                 users.push({
                     id: doc.id,
-                    data:doc.data()
+                    data: doc.data()
                 });
             }
         );
@@ -228,19 +228,19 @@ app.get('/api/getAllusers', async (req, res) => {
 
 // Get a single user by firebase ID
 app.get('/api/getUser', (req: Request, res: Response) => {
-  const userId: string | undefined = req.query.userId as string | undefined; 
-  if (!userId) {
-    return res.status(400).json({ error: 'userId parameter is required' });
-  } else {
-    return db.collection(userCollection)
-      .doc(userId)
-      .get()
-      .then((user) => {
-        if (!user.exists) throw new Error('User not found');
-        res.status(200).json({ id: user.id, data: user.data() });
-      })
-      .catch((error) => res.status(500).send(error));
-  }
+    const userId: string | undefined = req.query.userId as string | undefined;
+    if (!userId) {
+        return res.status(400).json({ error: 'userId parameter is required' });
+    } else {
+        return db.collection(userCollection)
+            .doc(userId)
+            .get()
+            .then((user) => {
+                if (!user.exists) throw new Error('User not found');
+                res.status(200).json({ id: user.id, data: user.data() });
+            })
+            .catch((error) => res.status(500).send(error));
+    }
 });
 
 // Get user by Email/SPIRE ID
@@ -427,6 +427,25 @@ app.post('/api/checkGear/:checkOut', async (req, res) => {
     }
 });
 
+//Helper function for getting gear by ID
+async function GearByID(gearID: string): Promise<object | undefined> {
+
+    if (gearUID.test(gearID)) {
+        const querySnapshot = await db.collection(gearCollection)
+            .where('gearId', '==', gearID)
+            .get();
+
+        if (querySnapshot.empty) {
+            return undefined
+        } else {
+            const gear = querySnapshot.docs[0]; // Assuming there is only one matching piece of gear
+            //return res.status(200).json({ id: gear.id, data: gear.data() });
+            return gear.data();
+        }
+    }
+    return undefined
+}
+
 // Helper  function for checkGear : modulates the checkedOut flag for gear
 // Note gearId here refers to the firebase ID not the UID we assign for gear
 async function updateGearStatus(gearId: string, flag: string): Promise<void> {
@@ -519,12 +538,12 @@ app.get('/api/getAllUsers', async (req: Request, res: Response) => {
     return res.status(201).json(snapshot.docs.map(doc => doc.data()));
 });
 
-async function deleteAllGear(): Promise<void> {
-    try {
-        const gearSnapshot = await db.collection(gearCollection).get();
-        const deletePromises = gearSnapshot.docs.map((doc) => doc.ref.delete());
-        await Promise.all(deletePromises);
-    } catch (error) {
-        throw new Error('Failed to delete all gear: ' + error);
-    }
-}
+// async function deleteAllGear(): Promise<void> {
+//     try {
+//         const gearSnapshot = await db.collection(gearCollection).get();
+//         const deletePromises = gearSnapshot.docs.map((doc) => doc.ref.delete());
+//         await Promise.all(deletePromises);
+//     } catch (error) {
+//         throw new Error('Failed to delete all gear: ' + error);
+//     }
+// }
