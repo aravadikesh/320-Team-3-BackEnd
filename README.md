@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is the back-end repo for the UMOC Web Locker built by Arav Adikesh, Inbar Artzi, and Ian McKenna.
+This is the back-end repo for the UMOC Web Locker. The UMOC Web Locker is a web application that allows users (primarily members of the UMass Outing Club) to view the available gear in the physical gear locker and check-out any items they need for personal or club use.
 
 ## Table of Contents
 
@@ -62,12 +62,52 @@ You will receive a link from which the API calls are being hosted. If you have a
 
 ## Usage
 
+The back-end is composed primarily of API calls using Express.js. Some examples include:
+- Create a user
+- Log in/sign out a user
+- Get all users
+- Get user by email/SPIRE/UID
+- Get gear held by user with email/SPIRE
+- Check out gear for user
+- and more...
 
 ## Authentication
 
+Using email and password verification, we use Firebase's Authentication service to ensure secure storage of sensitive account information. UIDs for users are created automatically and are synced between Firestore and Authentication akin to a relational database.
 
 ## Firestore Collections
 
+The majority of data related to this project can be found in Firebase's Firestore Database under these collections:
+
+1. **Gears Collection**
+
+A collection of documents related to gear items, with fields such as:
+- Name
+- Gear ID
+- Brand
+- Color
+- Checked in/out (boolean)
+- and more...
+
+2. **Users Collection**
+
+A collection of documents related to user accounts, with fields such as:
+- Name
+- Email
+- SPIRE ID
+- Phone Number
+- and more...
+
+Keep in mind we do not store account passwords in the Users collection. This is stored only in the Authentication database.
+
+3. **Logs Collection**
+
+A collection of documents related to when individual gear items are checked in/out.
+- Date (of update)
+- Gear ID
+- Customer ID
+- Leader ID
 
 ## Contributing
 
+The back-end was built by Arav Adikesh, Inbar Artzi, and Ian McKenna.
