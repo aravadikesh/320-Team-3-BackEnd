@@ -50,7 +50,12 @@ Before you begin, ensure you have the following installed:
 4. **Run project locally:**
 
     ```bash
-    firebase emulators:start
+    firebase init hosting
+    - say No to web framework
+    /test-hosting npm i
+    /functions npm i
+    /functions npm run build
+    /root firebase emulators:start
     ```
 
 You will receive a link from which the API calls are being hosted. If you have access to the front-end, you don't need to do anything with this link, just open the site and go from there.
@@ -65,11 +70,4 @@ You will receive a link from which the API calls are being hosted. If you have a
 
 
 ## Contributing
-# run project locally
-- run firebase init hosting
-   - say No to web framework
-- /test-hosting run npm i
-- /functions run npm i
-- /functions run npm run build
-- /prject-backend run firebase emulators:start
 
